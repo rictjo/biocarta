@@ -12,3 +12,12 @@ limitations under the License.
 """
 import numpy as np
 import pandas as pd
+import umap
+
+def read_rds_distance_matrix ( filename = '../res1/distance/distances.rds' ) :
+    import rpy2.robjects as robjects
+    from rpy2.robjects import pandas2ri
+    from scipy.spatial.distance import pdist,squareform
+    pandas2ri.activate()
+    readRDS = robjects.r['readRDS']
+    return ( squareform(readRDS ('../res1/distance/distances.rds') ) )
