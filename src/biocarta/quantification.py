@@ -25,7 +25,7 @@ def distance_calculation ( coordinates:np.array ,
             corr =  pearsonrho( crds , crds )
         else :
             corr = spearmanrho( crds , crds )
-        corr = 0.5 * ( corr + corr.T )  
+        corr = 0.5 * ( corr + corr.T ) # THIS SHOULD BE REMOVED ONCE DISC. LOCATED
         if 'absolute' in distance_type :
             corr = np.abs( corr )
         if 'square' in distance_type :
@@ -63,7 +63,7 @@ https://arxiv.org/abs/2208.04720v2
 #from impetuous.clustering import clustering_appraisal
 
 def generate_clustering_labels ( distm:np.array , cmd:str='max' ,
-                                 bExtreme:bool=False , n_clusters:int = None) -> tuple[list[str]] :
+                                 bExtreme:bool=False , n_clusters:int = None) -> tuple :
     # FROM IMPETUOUS-GFA
     from impetuous.clustering import sclinkages
     res         = sclinkages( distm , cmd )['F']
@@ -73,14 +73,16 @@ def generate_clustering_labels ( distm:np.array , cmd:str='max' ,
     hierarch_df = pd.DataFrame ( res.values() , index=list(res.keys()) , columns = labels_f )
     cluster_df  = res_df.T .apply( lambda x: cluster_appraisal(x,garbage_n = 0) )
     clabels_o , clabels_n = None , None
+    screening    = np.array( [ v[-1][0] for v in cluster_df.values ] )
+    level_values = np.array( res.keys() )
     if bExtreme :
-        imax            = np.argmax( [ v[-1][0] for v in cluster_df.values ] )
+        imax            = np.argmax( screening )
         clabels_o       = hierarchi_df.iloc[imax,:].values.tolist()
     if not n_clusters is None :
         jmax            = sorted ( [ i for i in range(len(df)) \
                             if np.abs( len( df.iloc[i].values )-2 - enforce_n_clusters ) <= np.ceil(n_clusters*0.1) ])[0]
         clabels_n       = hierarch_df.iloc[jhit,:].values.tolist()
-    return ( clabels_n , clabels_o )
+    return ( clabels_n , clabels_o , np.array( [level_values,screening] ) )
 #from impetuous.clustering import generate_clustering_labels
 
 def create_mapping ( distm:np.array , cmd:str = 'max' ,
@@ -94,9 +96,9 @@ def create_mapping ( distm:np.array , cmd:str = 'max' ,
                      local_connectivity:float = 20 ,
                      transform_seed:int = 42 ) -> pd.DataFrame :
 
-    clabels_o , clabels_n = generate_clustering_labels ( distm , cmd = cmd ,
-                                 n_clusters = n_clusters ,
-                                 bExtreme = bExtreme )
+    clabels_o , clabels_n , screening = generate_clustering_labels ( distm ,
+            cmd = cmd , n_clusters = n_clusters ,
+            bExtreme = bExtreme )
     if MX is None : # IF NOT PRECOMPUTED
         u , s , vt = np.linalg.svd ( distm , False )
         Xf = u*s # np.sqrt(s)
@@ -130,7 +132,7 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
     #
     adf = adf.iloc[ np.inf != np.abs( 1.0/np.std(adf.values,1) ) ,
                     np.inf != np.abs( 1.0/np.std(adf.values,0) ) ].copy()
-    jdf = jdf.loc[:,adf.columns.values.tolist()].copy()
+    jdf = jdf.loc[:,adf.columns.values.tolist() ].copy()
     #
     n_neighbors = umap_n_neighbors
     local_connectivity = umap_local_connectivity
@@ -194,7 +196,6 @@ if __name__ == '__main__' :
     print ( np.sum( distm_features,1 ) )
     print ( 1./np.std( distm_features,0 ) )
     print ( 1./np.std( distm_features,1 ) )
-    exit(1)
     #
     print ( adf.apply(lambda x:np.sum(x)).values )
     #
