@@ -61,7 +61,8 @@ https://arxiv.org/abs/2208.04720v2
     return ( decomposition )
 
 def generate_clustering_labels ( distm:np.array , cmd:str='max' ,
-                            bExtreme:bool=False , n_clusters:int = None) :
+                                 bExtreme:bool=False , n_clusters:int = None) -> tuple[list[str]] :
+    # FROM IMPETUOUS-GFA
     from impetuous.clustering import sclinkages
     res         = sclinkages( distm , cmd )['F']
     index       = list( res.keys() )
@@ -72,28 +73,32 @@ def generate_clustering_labels ( distm:np.array , cmd:str='max' ,
     clabels_o , clabels_n = None , None
     if bExtreme :
         imax            = np.argmax( [ v[-1][0] for v in cluster_df.values ] )
-        clabels_o       = hierarchi_df.iloc[imax,:].values
+        clabels_o       = hierarchi_df.iloc[imax,:].values.tolist()
     if not n_clusters is None :
         jmax            = sorted ( [ i for i in range(len(df)) \
-                            if np.abs( len( df.iloc[i].values )-2 - enforce_n_clusters ) < np.round(n_clusters*0.1) ])[0]
-        clabels_n       = hierarch_df.iloc[jhit,:].values
+                            if np.abs( len( df.iloc[i].values )-2 - enforce_n_clusters ) <= np.ceil(n_clusters*0.1) ])[0]
+        clabels_n       = hierarch_df.iloc[jhit,:].values.tolist()
     return ( clabels_n , clabels_o )
 
-
-def create_mapping ( distm:np.array  , cmd:str = 'max' ,
+def create_mapping ( distm:np.array , cmd:str = 'max' ,
+                     index_labels:list[str] = None ,
                      n_clusters:int     = None  ,
                      bExtreme:bool      = False ,
                      bDoUmap:bool       = True  ,
                      umap_dimension:int = 2     ,
-                     n_neighbors:int    = 20 ,
+                     n_neighbors:int    = 20    ,
+                     MF:tuple[np.array] = None  ,
                      local_connectivity:float = 20 ,
                      transform_seed:int = 42 ) -> pd.DataFrame :
 
     clabels_o , clabels_n = generate_clustering_labels ( distm , cmd = cmd ,
                                  n_clusters = n_clusters ,
                                  bExtreme = bExtreme )
-    u,s,vt = np.linalg.svd ( distm , False )
-    Xf = u*s
+    if MX is None : # IF NOT PRECOMPUTED
+        u , s , vt = np.linalg.svd ( distm , False )
+        Xf = u*s # np.sqrt(s)
+    else :
+        Xf = MF[0]*MF[1]
     if bDoUmap :
         Uf = pd.DataFrame( umap.UMAP( local_connectivity      = local_connectivity ,
                                       n_components            = umap_dimension     ,
@@ -112,31 +117,18 @@ def create_mapping ( distm:np.array  , cmd:str = 'max' ,
         resdf.loc['cids.user'] = clabels_n
     return ( resdf )
 
-if __name__ == '__main__' :
+
+def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
+        bVerbose = False , bExtreme = True , force_n_clusters = None ,
+        n_components = None , bDoUmap = True ,
+        distance_type:str = 'correlation,spearman,absolute' ,
+        umap_dimension:int = 2 , umap_n_neighbors:int = 20 , umap_local_connectivity:float = 20.,
+        umap_seed = 42, hierarchy_cmd = 'max'  ) -> tuple[pd.DataFrame]:
     #
-    adf = pd.read_csv('analytes.tsv',sep='\t',index_col=0)
-    labels_f = adf.index.values
-    labels_s = adf.columns.values
-    #
-    print ( adf.apply(lambda x:np.sum(x)).values )
-    #
-    jdf = pd.read_csv('journal.tsv',sep='\t',index_col=0)
-    alignment_label , sample_label = 'Cell-line' , 'sample'
-    cmd = 'max'
-    bVerbose = True
-    bExtreme = False
-    n_clusters = 80
-    n_components = None
-    bDoUmap = True
-    umap_dimension = 2
-    n_neighbors = 20
-    local_connectivity = 20
-    transform_seed = 42
-    #
-    print ( adf , jdf )
-    #
-    distance_type = 'correlation,spearman,squared'
-    # distance_type = 'euclidean'
+    n_neighbors = umap_n_neighbors
+    local_connectivity = umap_local_connectivity
+    transform_seed = umap_seed
+    cmd = hierarchy_cmd
     #
     from impetuous.clustering import sclinkages
     distm_features = distance_calculation ( adf.values  , distance_type ,
@@ -144,20 +136,78 @@ if __name__ == '__main__' :
     if bVerbose :
         print ( distm_features )
     #
-    resdf = create_mapping ( distm = distm_features    , cmd = cmd ,
-                     n_clusterst = n_clusters  , bExtreme = bExtreme ,
+    resdf_f = create_mapping ( distm = distm_features ,
+                     index_labels = labels_f , cmd = cmd ,
+                     n_clusters  = n_clusters  , bExtreme = bExtreme ,
                      bDoUmap     = bDoUmap     , umap_dimension = umap_dimension,
                      n_neighbors = n_neighbors , local_connectivity = local_connectivity ,
                      transform_seed = transform_seed )
-
-    resdf.to_csv('resdf.tsv',sep='\t')
-
-    distm_samples  = distance_calculation ( adf.T.values, distance_type , bRemoveCurse = True )
     #
+    if bVerbose :
+        print ( 'STORING RESULTS 1 > ', 'resdf_f.tsv' )
+        resdf_f .to_csv( 'resdf_f.tsv',sep='\t' )
+    #
+    distm_samples  = distance_calculation ( adf.T.values, distance_type , bRemoveCurse = True )
+    resdf_s = create_mapping ( distm = distm_samples ,
+                     index_labels = labels_s    , cmd = cmd ,
+                     n_clusters   = n_clusters  , bExtreme = bExtreme ,
+                     bDoUmap      = bDoUmap     , umap_dimension = umap_dimension,
+                     n_neighbors  = n_neighbors , local_connectivity = local_connectivity ,
+                     transform_seed = transform_seed )
+
+    if bVerbose :
+        print ( 'STORING RESULTS 2 > ', 'resdf_s.tsv' )
+        resdf_s .to_csv( 'resdf_s.tsv',sep='\t' )
+    #
+    pcas_df,pcaw_df = None,None
     if not jdf is None :
         if not ( sample_label is None or alignment_label is None ) :
             from impetuous.quantification import multivariate_aligned_pca
-            pcas_df , pcaw_df = multivariate_aligned_pca ( analytes_df , journal_df ,
+            pcas_df , pcaw_df = multivariate_aligned_pca ( adf , jdf ,
                     sample_label = sample_label , align_to = alignment_label ,
                     n_components = n_components )
-    print ( pcas_df )
+    if bVerbose :
+        print ( 'STORING RESULTS 3,4 > ', 'pcas_df.tsv', 'pcaw_df.tsv' )
+        pcas_df .to_csv( 'pcas_df.tsv','\t' )
+        pcaw_df .to_csv( 'pcaw_df.tsv','\t' )
+
+    return ( resdf_f , pcas_df , resdf_s , pcaw_df )
+
+
+if __name__ == '__main__' :
+    #
+    adf = pd.read_csv('analytes.tsv',sep='\t',index_col=0)
+    labels_f = adf.index.values.tolist()
+    labels_s = adf.columns.values.tolist()
+    #
+    print ( adf.apply(lambda x:np.sum(x)).values )
+    #
+    jdf = pd.read_csv('journal.tsv',sep='\t',index_col=0)
+    alignment_label , sample_label = 'Cell-line' , 'sample'
+    #
+    cmd                = 'max'
+    bVerbose           = True
+    bExtreme           = True
+    n_clusters         = 80
+    n_components       = None
+    bDoUmap            = True
+    umap_dimension     = 2
+    n_neighbors        = 20
+    local_connectivity = 20
+    transform_seed     = 42
+    #
+    print ( adf , jdf )
+    #
+    distance_type = 'correlation,spearman,squared'
+    # distance_type = 'euclidean'
+    #
+    full_mapping ( adf , jdf ,
+        bVerbose = bVerbose , bExtreme = bExtreme , force_n_clusters = n_clusters ,
+        n_components = n_components , bDoUmap = bDoUmap ,
+        distance_type = distance_type  ,
+        umap_dimension = umap_dimension ,
+        umap_n_neighbors = n_neighbors  ,
+        umap_local_connectivity = local_connectivity ,
+        umap_seed = transform_seed , hierarchy_cmd = 'max' )
+
+
