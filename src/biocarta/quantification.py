@@ -25,12 +25,12 @@ def distance_calculation ( coordinates:np.array ,
             corr =  pearsonrho( crds , crds )
         else :
             corr = spearmanrho( crds , crds )
+        corr = 0.5 * ( corr + corr.T )  
         if 'absolute' in distance_type :
             corr = np.abs( corr )
         if 'square' in distance_type :
             corr = corr**2
         distm = 1 - corr
-        distm = 0.5 * ( distm + distm.T )
     else :
         from scipy.spatial.distance import pdist,squareform
         distm = squareform( pdist( crds , metric = distance_type ))
