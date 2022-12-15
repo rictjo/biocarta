@@ -10,8 +10,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-import numpy as np
 import pandas as pd
+import numpy as np
 import umap
 
 def distance_calculation ( coordinates:np.array ,
@@ -30,6 +30,7 @@ def distance_calculation ( coordinates:np.array ,
         if 'square' in distance_type :
             corr = corr**2
         distm = 1 - corr
+        distm = 0.5 * ( distm + distm.T )
     else :
         from scipy.spatial.distance import pdist,squareform
         distm = squareform( pdist( crds , metric = distance_type ))
@@ -37,7 +38,7 @@ def distance_calculation ( coordinates:np.array ,
         from impetuous.reducer import remove_curse
         distm = remove_curse ( distm , nRound = nRound )
     return ( distm )
-
+#from impetuous.quantification import distance_calculation
 
 def cluster_appraisal( x:pd.Series , garbage_n = 0 ) :
     """
@@ -59,6 +60,7 @@ https://arxiv.org/abs/2208.04720v2
     decomposition .append( tuple( ( B ,-garbage_n )) )
     decomposition .append( tuple( ( A*B/(A+B) , None ) ) )
     return ( decomposition )
+#from impetuous.clustering import clustering_appraisal
 
 def generate_clustering_labels ( distm:np.array , cmd:str='max' ,
                                  bExtreme:bool=False , n_clusters:int = None) -> tuple[list[str]] :
@@ -79,11 +81,12 @@ def generate_clustering_labels ( distm:np.array , cmd:str='max' ,
                             if np.abs( len( df.iloc[i].values )-2 - enforce_n_clusters ) <= np.ceil(n_clusters*0.1) ])[0]
         clabels_n       = hierarch_df.iloc[jhit,:].values.tolist()
     return ( clabels_n , clabels_o )
+#from impetuous.clustering import generate_clustering_labels
 
 def create_mapping ( distm:np.array , cmd:str = 'max' ,
                      index_labels:list[str] = None ,
                      n_clusters:int     = None  ,
-                     bExtreme:bool      = False ,
+                     bExtreme:bool      = True ,
                      bDoUmap:bool       = True  ,
                      umap_dimension:int = 2     ,
                      n_neighbors:int    = 20    ,
@@ -123,7 +126,11 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
         n_components = None , bDoUmap = True ,
         distance_type:str = 'correlation,spearman,absolute' ,
         umap_dimension:int = 2 , umap_n_neighbors:int = 20 , umap_local_connectivity:float = 20.,
-        umap_seed = 42, hierarchy_cmd = 'max'  ) -> tuple[pd.DataFrame]:
+        umap_seed = 42, hierarchy_cmd = 'max' , add_labels=None ) -> tuple[pd.DataFrame]:
+    #
+    adf = adf.iloc[ np.inf != np.abs( 1.0/np.std(adf.values,1) ) ,
+                    np.inf != np.abs( 1.0/np.std(adf.values,0) ) ].copy()
+    jdf = jdf.loc[:,adf.columns.values.tolist()].copy()
     #
     n_neighbors = umap_n_neighbors
     local_connectivity = umap_local_connectivity
@@ -154,18 +161,17 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
                      bDoUmap      = bDoUmap     , umap_dimension = umap_dimension,
                      n_neighbors  = n_neighbors , local_connectivity = local_connectivity ,
                      transform_seed = transform_seed )
-
     if bVerbose :
         print ( 'STORING RESULTS 2 > ', 'resdf_s.tsv' )
         resdf_s .to_csv( 'resdf_s.tsv',sep='\t' )
     #
-    pcas_df,pcaw_df = None,None
+    pcas_df , pcaw_df = None , None
     if not jdf is None :
         if not ( sample_label is None or alignment_label is None ) :
             from impetuous.quantification import multivariate_aligned_pca
             pcas_df , pcaw_df = multivariate_aligned_pca ( adf , jdf ,
                     sample_label = sample_label , align_to = alignment_label ,
-                    n_components = n_components )
+                    n_components = n_components , add_labels = add_labels )
     if bVerbose :
         print ( 'STORING RESULTS 3,4 > ', 'pcas_df.tsv', 'pcaw_df.tsv' )
         pcas_df .to_csv( 'pcas_df.tsv','\t' )
@@ -180,10 +186,21 @@ if __name__ == '__main__' :
     labels_f = adf.index.values.tolist()
     labels_s = adf.columns.values.tolist()
     #
+    distance_type = 'correlation,spearman,squared'
+    distm_features = distance_calculation ( adf.values  , distance_type ,
+                             bRemoveCurse = True , nRound = 4 )
+    #
+    print ( np.sum( distm_features,0 ) )
+    print ( np.sum( distm_features,1 ) )
+    print ( 1./np.std( distm_features,0 ) )
+    print ( 1./np.std( distm_features,1 ) )
+    exit(1)
+    #
     print ( adf.apply(lambda x:np.sum(x)).values )
     #
     jdf = pd.read_csv('journal.tsv',sep='\t',index_col=0)
     alignment_label , sample_label = 'Cell-line' , 'sample'
+    add_labels = ['Disease']
     #
     cmd                = 'max'
     bVerbose           = True
@@ -208,6 +225,7 @@ if __name__ == '__main__' :
         umap_dimension = umap_dimension ,
         umap_n_neighbors = n_neighbors  ,
         umap_local_connectivity = local_connectivity ,
-        umap_seed = transform_seed , hierarchy_cmd = 'max' )
+        umap_seed = transform_seed , hierarchy_cmd = 'max',
+        add_labels = add_labels )
 
 
