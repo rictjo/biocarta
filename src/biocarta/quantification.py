@@ -62,27 +62,27 @@ https://arxiv.org/abs/2208.04720v2
     return ( decomposition )
 #from impetuous.clustering import clustering_appraisal
 
-def generate_clustering_labels ( distm:np.array , cmd:str='max' ,
+def generate_clustering_labels ( distm:np.array , cmd:str='max' , labels:list[str]=None ,
                                  bExtreme:bool=False , n_clusters:int = None) -> tuple :
     # FROM IMPETUOUS-GFA
     from impetuous.clustering import sclinkages
     res         = sclinkages( distm , cmd )['F']
     index       = list( res.keys() )
-    if labels_f is None :
-        labels_f = range(len(distm_features))
-    hierarch_df = pd.DataFrame ( res.values() , index=list(res.keys()) , columns = labels_f )
-    cluster_df  = res_df.T .apply( lambda x: cluster_appraisal(x,garbage_n = 0) )
+    if labels is None :
+        labels = range(len(distm_features))
+    hierarch_df = pd.DataFrame ( res.values() , index=list(res.keys()) , columns = labels )
+    cluster_df  = hierarch_df .T .apply( lambda x: cluster_appraisal(x,garbage_n = 0) )
     clabels_o , clabels_n = None , None
     screening    = np.array( [ v[-1][0] for v in cluster_df.values ] )
     level_values = np.array( res.keys() )
     if bExtreme :
         imax            = np.argmax( screening )
-        clabels_o       = hierarchi_df.iloc[imax,:].values.tolist()
+        clabels_o       = hierarch_df.iloc[imax,:].values.tolist()
     if not n_clusters is None :
-        jmax            = sorted ( [ i for i in range(len(df)) \
-                            if np.abs( len( df.iloc[i].values )-2 - enforce_n_clusters ) <= np.ceil(n_clusters*0.1) ])[0]
+        jmax            = sorted ( [ i for i in range(len(cluster_df)) \
+                            if np.abs( len( cluster_df.iloc[i].values )-2 - enforce_n_clusters ) <= np.ceil(n_clusters*0.1) ])[0]
         clabels_n       = hierarch_df.iloc[jhit,:].values.tolist()
-    return ( clabels_n , clabels_o , np.array( [level_values,screening] ) )
+    return ( clabels_n , clabels_o , hierarch_df , np.array( [level_values,screening] ) )
 #from impetuous.clustering import generate_clustering_labels
 
 def create_mapping ( distm:np.array , cmd:str = 'max' ,
@@ -94,10 +94,10 @@ def create_mapping ( distm:np.array , cmd:str = 'max' ,
                      n_neighbors:int    = 20    ,
                      MF:tuple[np.array] = None  ,
                      local_connectivity:float = 20 ,
-                     transform_seed:int = 42 ) -> pd.DataFrame :
+                     transform_seed:int = 42 ) -> tuple[pd.DataFrame] :
 
-    clabels_o , clabels_n , screening = generate_clustering_labels ( distm ,
-            cmd = cmd , n_clusters = n_clusters ,
+    clabels_o , clabels_n , hierarch_df, screening = generate_clustering_labels ( distm ,
+            labels = index_labels , cmd = cmd , n_clusters = n_clusters ,
             bExtreme = bExtreme )
     if MX is None : # IF NOT PRECOMPUTED
         u , s , vt = np.linalg.svd ( distm , False )
@@ -120,8 +120,7 @@ def create_mapping ( distm:np.array , cmd:str = 'max' ,
         resdf.loc['cids,max']  = clabels_o
     if not clabels_n is None :
         resdf.loc['cids.user'] = clabels_n
-    return ( resdf )
-
+    return ( resdf, hierarch_df )
 
 def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
         bVerbose = False , bExtreme = True , force_n_clusters = None ,
@@ -145,8 +144,8 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
     if bVerbose :
         print ( distm_features )
     #
-    resdf_f = create_mapping ( distm = distm_features ,
-                     index_labels = labels_f , cmd = cmd ,
+    resdf_f , hierarch_f_df = create_mapping ( distm = distm_features ,
+                     index_labels = adf.index.values , cmd = cmd ,
                      n_clusters  = n_clusters  , bExtreme = bExtreme ,
                      bDoUmap     = bDoUmap     , umap_dimension = umap_dimension,
                      n_neighbors = n_neighbors , local_connectivity = local_connectivity ,
@@ -157,8 +156,8 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
         resdf_f .to_csv( 'resdf_f.tsv',sep='\t' )
     #
     distm_samples  = distance_calculation ( adf.T.values, distance_type , bRemoveCurse = True )
-    resdf_s = create_mapping ( distm = distm_samples ,
-                     index_labels = labels_s    , cmd = cmd ,
+    resdf_s , hierarch_s_df = create_mapping ( distm = distm_samples ,
+                     index_labels = adf.columns.values , cmd = cmd ,
                      n_clusters   = n_clusters  , bExtreme = bExtreme ,
                      bDoUmap      = bDoUmap     , umap_dimension = umap_dimension,
                      n_neighbors  = n_neighbors , local_connectivity = local_connectivity ,
@@ -178,8 +177,11 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
         print ( 'STORING RESULTS 3,4 > ', 'pcas_df.tsv', 'pcaw_df.tsv' )
         pcas_df .to_csv( 'pcas_df.tsv','\t' )
         pcaw_df .to_csv( 'pcaw_df.tsv','\t' )
-
-    return ( resdf_f , pcas_df , resdf_s , pcaw_df )
+        print ( 'STORING RESULTS 5,5 > ', ' hierarch_f.tsv', ' hierarch_s.tsv' )
+        hierarch_s_df.to_csv('hierarch_s.tsv',sep='\t')
+        hierarch_f_df.to_csv('hierarch_f.tsv',sep='\t')
+    #
+    return ( resdf_f , hierarch_f_df, pcas_df , resdf_s , hierarch_s_df , pcaw_df )
 
 
 if __name__ == '__main__' :
@@ -189,15 +191,15 @@ if __name__ == '__main__' :
     labels_s = adf.columns.values.tolist()
     #
     distance_type = 'correlation,spearman,squared'
-    distm_features = distance_calculation ( adf.values  , distance_type ,
-                             bRemoveCurse = True , nRound = 4 )
+    #distm_features = distance_calculation ( adf.values  , distance_type ,
+    #                         bRemoveCurse = True , nRound = 4 )
     #
-    print ( np.sum( distm_features,0 ) )
-    print ( np.sum( distm_features,1 ) )
-    print ( 1./np.std( distm_features,0 ) )
-    print ( 1./np.std( distm_features,1 ) )
+    #print ( np.sum( distm_features,0 ) )
+    #print ( np.sum( distm_features,1 ) )
+    #print ( 1./np.std( distm_features,0 ) )
+    #print ( 1./np.std( distm_features,1 ) )
     #
-    print ( adf.apply(lambda x:np.sum(x)).values )
+    #print ( adf.apply(lambda x:np.sum(x)).values )
     #
     jdf = pd.read_csv('journal.tsv',sep='\t',index_col=0)
     alignment_label , sample_label = 'Cell-line' , 'sample'
