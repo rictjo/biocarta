@@ -40,7 +40,7 @@ def distance_calculation ( coordinates:np.array ,
     return ( distm )
 #from impetuous.quantification import distance_calculation
 
-def cluster_appraisal( x:pd.Series , garbage_n = 0 ) :
+def cluster_appraisal( x:pd.Series , garbage_n = 0 , Sfunc = lambda x:np.mean(x,0)) :
     """
 Clustering Optimisation Method for Highly Connected Data
 Richard Tjörnhammar
@@ -53,7 +53,8 @@ https://arxiv.org/abs/2208.04720v2
     N     = len ( x )
     A , B = 1 , N
     if len(decomposition) > 0 :
-        A = np.mean(decomposition,0)[0]
+        #A = np.mean(decomposition,0)[0]
+        A = Sfunc(decomposition)[0]
         B = len(decomposition)
     else :
         decomposition = [ tuple( (0,0) ) ]
@@ -79,8 +80,9 @@ def generate_clustering_labels ( distm:np.array , cmd:str='max' , labels:list[st
         imax            = np.argmax( screening )
         clabels_o       = hierarch_df.iloc[imax,:].values.tolist()
     if not n_clusters is None :
-        jmax            = sorted ( [ i for i in range(len(cluster_df)) \
-                            if np.abs( len( cluster_df.iloc[i].values )-2 - enforce_n_clusters ) <= np.ceil(n_clusters*0.1) ])[0]
+        print ( cluster_df )
+        jmax            = sorted ( [ i for i in range(len(cluster_df.index.values)) \
+            if np.abs( len( cluster_df.iloc[i,:].values )-2 - enforce_n_clusters ) <= np.ceil(n_clusters*0.1) ])[0]
         clabels_n       = hierarch_df.iloc[jhit,:].values.tolist()
     return ( clabels_n , clabels_o , hierarch_df , np.array( [level_values,screening] ) )
 #from impetuous.clustering import generate_clustering_labels
