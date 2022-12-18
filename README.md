@@ -9,7 +9,7 @@ Creating Cartographic Representations of Biological Data
 
 <!-- blank line -->
 <figure class="video_container">
-  <iframe src="https://www.youtube.com/embed/enMumwvLAug" frameborder="0" allowfullscreen="true"> </iframe>
+  <iframe src="https://gist.githubusercontent.com/rictjo/9d9e582e9e54a55272a54ea9d7387aad/raw/43cda5cbd0480f6c3f76bee07dfb57f66ba0b579/index.html" frameborder="1" > </iframe>
 </figure>
 <!-- blank line -->
 
