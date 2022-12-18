@@ -13,5 +13,9 @@ Creating Cartographic Representations of Biological Data
 </figure>
 <!-- blank line -->
 
+<figure class="video_container">
+  <iframe src="https://youtu.be/aircAruvnKk" > </iframe>
+</figure>
+
 
 [![Watch the video](https://img.youtube.com/vi/T-D1KVIuvjA/maxresdefault.jpg)](https://youtu.be/T-D1KVIuvjA)
