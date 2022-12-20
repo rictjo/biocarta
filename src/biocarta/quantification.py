@@ -38,24 +38,23 @@ def create_mapping ( distm:np.array , cmd:str = 'max'	,
         n_proj = len(distm)
 
     if MF is None : # IF NOT PRECOMPUTED
-        #u , s , vt = np.linalg.svd ( distm , False )
-        #Xf = u*s # np.sqrt(s)
         Xf = distance_matrix_to_absolute_coordinates ( distm ,
 			n_dimensions = -1 , bLegacy = False )
-	# KEEP ALL BUT LAST DIMENSION
     else :
         Xf = MF
     #
+    print ( Xf , np.shape( Xf ) )
     if bDoUmap :
         Uf = pd.DataFrame( umap.UMAP( local_connectivity	= local_connectivity	,
-                                      n_components		= umap_dimension	,
-                                      n_neighbors		= n_neighbors		,
+                                      n_components		= int(umap_dimension)	,
+                                      n_neighbors		= int(n_neighbors)	,
                                       transform_seed		= transform_seed	,
                                         )\
 					.fit_transform( Xf ) )
 					#.fit_transform( distm ) )
     #
-    resdf = pd.DataFrame( np.array([ Xf[:,i] for i in range( len(Xf.T) ) if i<n_proj ])  ,
+    print ( Uf )
+    resdf = pd.DataFrame( np.array([ Xf.T[i] for i in range( len(Xf.T) ) if i<n_proj ]).T  ,
                   index      = index_labels ,
                   columns    = [ 'MFX.'+str(i) for i in range( len(Xf.T) ) if i<n_proj ] )
 
@@ -99,7 +98,7 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
     input_values = zvals( adf.values )['z']
     #
     MF_f , MF_s = None , None
-    if False : # DECOMPOSE THE DISTM IF FALSE
+    if False : # DECOMPOSE THE DISTM IF FALSE, NOT DONE
         u , s , vt = np.linalg.svd ( input_values , False )
         MF_f = u*s
         MF_s = vt.T*s
@@ -117,7 +116,7 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
                      bDoUmap     = bDoUmap     , umap_dimension = umap_dimension,
                      n_neighbors = n_neighbors , local_connectivity = local_connectivity ,
                      transform_seed = transform_seed, n_proj = n_projections )
-    #
+
     if bVerbose :
         print ( 'STORING RESULTS > ', 'resdf_f.tsv , soldf_f.tsv , hierarch_f.tsv' )
         resdf_f .to_csv( header_str + 'resdf_f.tsv' , sep='\t' )
@@ -134,6 +133,7 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
                      bDoUmap      = bDoUmap     , umap_dimension = umap_dimension,
                      n_neighbors  = n_neighbors , local_connectivity = local_connectivity ,
                      transform_seed = transform_seed , n_proj = n_projections )
+    #
     if bVerbose :
         print ( 'STORING RESULTS > ', 'resdf_s.tsv , soldf_s.tsv , hierarch_s.tsv' )
         resdf_s .to_csv( header_str + 'resdf_s.tsv',sep='\t' )
@@ -147,15 +147,18 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
             pcas_df , pcaw_df = multivariate_aligned_pca ( adf , jdf ,
                     sample_label = sample_label , align_to = alignment_label ,
                     n_components = n_components , add_labels = add_labels )
-    if bVerbose :
-        print ( 'STORING RESULTS 3,4 > ', 'pcas_df.tsv', 'pcaw_df.tsv' )
-        pcas_df .to_csv( header_str + 'pcas_df.tsv','\t' )
-        pcaw_df .to_csv( header_str + 'pcaw_df.tsv','\t' )
+            if bVerbose :
+                print ( 'STORING RESULTS > ', 'pcas_df.tsv', 'pcaw_df.tsv' )
+                pcas_df .to_csv( header_str + 'pcas_df.tsv','\t' )
+                pcaw_df .to_csv( header_str + 'pcaw_df.tsv','\t' )
 
-    # map_df_f =
-    # map_df_s =
-    return ( resdf_f , hierarch_f_df, pcas_df , resdf_s , hierarch_s_df , pcaw_df )
-
+            resdf_f = pd.concat( [resdf_f.T, pcas_df.T] ).T
+            resdf_s = pd.concat( [resdf_s.T, pcaw_df.T] ).T
+    #
+    if bVerbose:
+        print ( 'RETURNING: ')
+        print ( 'FEATURE MAP, SAMPLE MAP, FULL FEATURE HIERARCHY, FULL SAMPLE HIERARCHY' )
+    return ( resdf_f , resdf_s , hierarch_f_df, hierarch_s_df )
 
 
 if __name__ == '__main__' :
@@ -168,6 +171,7 @@ if __name__ == '__main__' :
     jdf = pd.read_csv('journal.tsv',sep='\t',index_col=0)
     jdf = jdf.loc[:,adf.columns.values]
     #
+    # adf=adf.iloc[:200,:]
     alignment_label , sample_label = 'Disease' , 'sample'
     add_labels = ['Cell-line']
     #
@@ -178,8 +182,8 @@ if __name__ == '__main__' :
     n_components       = None
     bDoUmap            = True
     umap_dimension     = 2
-    n_neighbors        = 100.
-    local_connectivity = 10.
+    n_neighbors        = 20.
+    local_connectivity = 20.
     transform_seed     = 42
     #
     print ( adf , jdf )
