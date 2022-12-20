@@ -16,6 +16,7 @@ import umap
 
 from impetuous.quantification	import distance_calculation
 from impetuous.clustering	import generate_clustering_labels
+from impetuous.clustering	import distance_matrix_to_absolute_coordinates
 
 def create_mapping ( distm:np.array , cmd:str = 'max'	,
                      index_labels:list[str]	= None	,
@@ -33,12 +34,18 @@ def create_mapping ( distm:np.array , cmd:str = 'max'	,
             labels = index_labels , cmd = cmd , n_clusters = n_clusters ,
             bExtreme = bExtreme )
 
+    if n_proj is None :
+        n_proj = len(distm)
+
     if MF is None : # IF NOT PRECOMPUTED
-        u , s , vt = np.linalg.svd ( distm , False )
-        Xf = u*s # np.sqrt(s)
+        #u , s , vt = np.linalg.svd ( distm , False )
+        #Xf = u*s # np.sqrt(s)
+        Xf = distance_matrix_to_absolute_coordinates ( distm ,
+			n_dimensions = -1 , bLegacy = False )
+	# KEEP ALL BUT LAST DIMENSION
     else :
         Xf = MF
-
+    #
     if bDoUmap :
         Uf = pd.DataFrame( umap.UMAP( local_connectivity	= local_connectivity	,
                                       n_components		= umap_dimension	,
@@ -47,9 +54,8 @@ def create_mapping ( distm:np.array , cmd:str = 'max'	,
                                         )\
 					.fit_transform( Xf ) )
 					#.fit_transform( distm ) )
-    if n_proj is None :
-        n_proj = len(Xf.T)
-    resdf = pd.DataFrame( Xf ,
+    #
+    resdf = pd.DataFrame( np.array([ Xf[:,i] for i in range( len(Xf.T) ) if i<n_proj ])  ,
                   index      = index_labels ,
                   columns    = [ 'MFX.'+str(i) for i in range( len(Xf.T) ) if i<n_proj ] )
 
@@ -77,7 +83,7 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
             if not directory[-1] == '/' :
                 directory = directory + '/'
             header_str = directory + header_str
-
+    #
     adf = adf.iloc[ np.inf != np.abs( 1.0/np.std(adf.values,1) ) ,
                     np.inf != np.abs( 1.0/np.std(adf.values,0) ) ].copy()
     jdf = jdf .loc[ :,adf.columns.values.tolist() ].copy()
@@ -91,9 +97,9 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
     #
     from impetuous.special import zvals
     input_values = zvals( adf.values )['z']
-
+    #
     MF_f , MF_s = None , None
-    if True :
+    if False : # DECOMPOSE THE DISTM IF FALSE
         u , s , vt = np.linalg.svd ( input_values , False )
         MF_f = u*s
         MF_s = vt.T*s
@@ -155,30 +161,13 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
 if __name__ == '__main__' :
     #
     adf = pd.read_csv('analytes.tsv',sep='\t',index_col=0)
-
+    #
     adf = adf.iloc[ np.inf != np.abs( 1.0/np.std(adf.values,1) ) ,
                     np.inf != np.abs( 1.0/np.std(adf.values,0) ) ].copy()
-
-
-    labels_f = adf.index.values.tolist()
-    labels_s = adf.columns.values.tolist()
-    """
-    #
-    distance_type = 'correlation,spearman,squared'
-    distm_features = distance_calculation ( adf.values  , distance_type ,
-                             bRemoveCurse = True , nRound = 1 )
-    print ( distm_features , np.sum(np.diag(distm_features) ))
-    exit(1)
-    """
-    #
-    # print ( np.sum( distm_features,0 ) )
-    # print ( np.sum( distm_features,1 ) )
-    # print ( 1./np.std( distm_features,0 ) )
-    # print ( 1./np.std( distm_features,1 ) )
-    #
-    # print ( adf.apply(lambda x:np.sum(x)).values )
     #
     jdf = pd.read_csv('journal.tsv',sep='\t',index_col=0)
+    jdf = jdf.loc[:,adf.columns.values]
+    #
     alignment_label , sample_label = 'Disease' , 'sample'
     add_labels = ['Cell-line']
     #
@@ -195,18 +184,22 @@ if __name__ == '__main__' :
     #
     print ( adf , jdf )
     #
-    distance_type = 'correlation,spearman,squared'
+    distance_type = 'correlation,spearman,absolute'
     # distance_type = 'euclidean'
     #
     print ( 'DOING THIS' , bVerbose )
     full_mapping ( adf , jdf ,
-        bVerbose = bVerbose , bExtreme = bExtreme , force_n_clusters = n_clusters ,
-        n_components = n_components , bDoUmap = bDoUmap ,
-        distance_type = distance_type  ,
-        umap_dimension = umap_dimension ,
-        umap_n_neighbors = n_neighbors  ,
+        bVerbose = bVerbose	,
+	bExtreme = bExtreme	,
+	force_n_clusters = n_clusters	,
+        n_components = n_components 	,
+	bDoUmap = bDoUmap	,
+        distance_type = distance_type  	,
+        umap_dimension = umap_dimension	,
+        umap_n_neighbors = n_neighbors	,
         umap_local_connectivity = local_connectivity ,
-        umap_seed = transform_seed , hierarchy_cmd = cmd ,
+        umap_seed = transform_seed	,
+	hierarchy_cmd = cmd 	,
         add_labels = add_labels )
 
 
