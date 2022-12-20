@@ -92,17 +92,19 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
     from impetuous.special import zvals
     input_values = zvals( adf.values )['z']
 
-    #u , s , vt = np.linalg.svd ( input_values , False )
-    MF_f = None # u*s
-    MF_s = None # vt.T*s
+    MF_f , MF_s = None , None
+    if True :
+        u , s , vt = np.linalg.svd ( input_values , False )
+        MF_f = u*s
+        MF_s = vt.T*s
 
     from impetuous.clustering import sclinkages
     distm_features = distance_calculation ( input_values  , distance_type ,
                              bRemoveCurse = bRemoveCurse_ , nRound = nRound_ )
 
-    if bVerbose :
-        print ( distm_features )
-    #
+    divergence = lambda r : np.exp(r)
+    distm_features *= divergence ( distm_features )
+
     resdf_f , hierarch_f_df , soldf_f = create_mapping ( distm = distm_features ,
                      index_labels = adf.index.values , cmd = hierarchy_cmd , MF = MF_f ,
                      n_clusters  = n_clusters  , bExtreme = bExtreme ,
@@ -111,12 +113,14 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
                      transform_seed = transform_seed, n_proj = n_projections )
     #
     if bVerbose :
-        print ( 'STORING RESULTS 1 > ', 'resdf_f.tsv' )
-        resdf_f .to_csv( header_str + 'resdf_f.tsv',sep='\t' )
-        soldf_f .to_csv( header_str + 'soldf_f.tsv',sep='\t' )
+        print ( 'STORING RESULTS > ', 'resdf_f.tsv , soldf_f.tsv , hierarch_f.tsv' )
+        resdf_f .to_csv( header_str + 'resdf_f.tsv' , sep='\t' )
+        soldf_f .to_csv( header_str + 'soldf_f.tsv' , sep='\t' )
+        hierarch_f_df.to_csv( header_str + 'hierarch_f.tsv' , sep='\t' )
     #
     distm_samples  = distance_calculation ( input_values.T , distance_type ,
 			     bRemoveCurse = bRemoveCurse_ , nRound = nRound_ )
+    distm_samples *= divergence ( distm_samples )
 
     resdf_s , hierarch_s_df , soldf_s = create_mapping ( distm = distm_samples ,
                      index_labels = adf.columns.values , cmd = hierarchy_cmd , MF = MF_s ,
@@ -125,9 +129,10 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
                      n_neighbors  = n_neighbors , local_connectivity = local_connectivity ,
                      transform_seed = transform_seed , n_proj = n_projections )
     if bVerbose :
-        print ( 'STORING RESULTS 2 > ', 'resdf_s.tsv' )
+        print ( 'STORING RESULTS > ', 'resdf_s.tsv , soldf_s.tsv , hierarch_s.tsv' )
         resdf_s .to_csv( header_str + 'resdf_s.tsv',sep='\t' )
         soldf_s .to_csv( header_str + 'soldf_s.tsv',sep='\t' )
+        hierarch_s_df.to_csv( header_str + 'hierarch_s.tsv' , sep='\t' )
     #
     pcas_df , pcaw_df = None , None
     if not jdf is None :
@@ -140,9 +145,7 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
         print ( 'STORING RESULTS 3,4 > ', 'pcas_df.tsv', 'pcaw_df.tsv' )
         pcas_df .to_csv( header_str + 'pcas_df.tsv','\t' )
         pcaw_df .to_csv( header_str + 'pcaw_df.tsv','\t' )
-        print ( 'STORING RESULTS 5,5 > ', ' hierarch_f.tsv', ' hierarch_s.tsv' )
-        hierarch_s_df.to_csv( header_str + 'hierarch_s.tsv' , sep='\t' )
-        hierarch_f_df.to_csv( header_str + 'hierarch_f.tsv' , sep='\t' )
+
     # map_df_f =
     # map_df_s =
     return ( resdf_f , hierarch_f_df, pcas_df , resdf_s , hierarch_s_df , pcaw_df )
