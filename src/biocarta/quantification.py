@@ -18,7 +18,7 @@ from impetuous.quantification	import distance_calculation
 from impetuous.clustering	import generate_clustering_labels
 from impetuous.clustering	import distance_matrix_to_absolute_coordinates
 
-def create_mapping ( distm:np.array , cmd:str = 'max'	,
+def create_mapping ( distm:np.array , cmd:str	= 'max'	,
                      index_labels:list[str]	= None	,
                      n_clusters:int		= None	,
                      bExtreme:bool		= True	,
@@ -43,7 +43,6 @@ def create_mapping ( distm:np.array , cmd:str = 'max'	,
     else :
         Xf = MF
     #
-    print ( Xf , np.shape( Xf ) )
     if bDoUmap :
         Uf = pd.DataFrame( umap.UMAP( local_connectivity	= local_connectivity	,
                                       n_components		= int(umap_dimension)	,
@@ -51,19 +50,18 @@ def create_mapping ( distm:np.array , cmd:str = 'max'	,
                                       transform_seed		= transform_seed	,
                                         )\
 					.fit_transform( Xf ) )
-					#.fit_transform( distm ) )
     #
-    print ( Uf )
     resdf = pd.DataFrame( np.array([ Xf.T[i] for i in range( len(Xf.T) ) if i<n_proj ]).T  ,
                   index      = index_labels ,
                   columns    = [ 'MFX.'+str(i) for i in range( len(Xf.T) ) if i<n_proj ] )
-
+    #
     for i in range(umap_dimension) :
         resdf.loc[:,'UMAP.'+str(i)] = Uf.iloc[:,i].values
     if not clabels_o is None :
         resdf.loc[:,'cids.max']  = clabels_o
     if not clabels_n is None :
         resdf.loc[:,'cids.user'] = clabels_n
+    #
     return ( resdf, hierarch_df , pd.DataFrame(sol) )
 
 def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
@@ -71,9 +69,9 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
         n_components:int = None , bDoUmap:bool = True ,
         distance_type:str = 'correlation,spearman,absolute' ,
         umap_dimension:int = 2 , umap_n_neighbors:int = 20 , umap_local_connectivity:float = 20. ,
-        umap_seed:int = 42 , hierarchy_cmd:str = 'max' ,
-        add_labels:list[str] = None, n_projections:int = 2,
-        directory:str = None ) -> tuple[pd.DataFrame] :
+        umap_seed:int = 42 , hierarchy_cmd:str = 'max' , divergence = lambda r : np.exp(r) ,
+        add_labels:list[str] = None , sample_label:str = None , alignment_label:str = None ,
+	n_projections:int = 2 , directory:str = None ) -> tuple[pd.DataFrame] :
     #
     if bVerbose :
         import time
@@ -102,14 +100,15 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
         u , s , vt = np.linalg.svd ( input_values , False )
         MF_f = u*s
         MF_s = vt.T*s
-
+    #
     from impetuous.clustering import sclinkages
     distm_features = distance_calculation ( input_values  , distance_type ,
                              bRemoveCurse = bRemoveCurse_ , nRound = nRound_ )
-
-    divergence = lambda r : np.exp(r)
+    #
+    if not bRemoveCurse_ :
+        divergence = lambda r : 1
     distm_features *= divergence ( distm_features )
-
+    #
     resdf_f , hierarch_f_df , soldf_f = create_mapping ( distm = distm_features ,
                      index_labels = adf.index.values , cmd = hierarchy_cmd , MF = MF_f ,
                      n_clusters  = n_clusters  , bExtreme = bExtreme ,
@@ -155,7 +154,7 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
             resdf_f = pd.concat( [resdf_f.T, pcas_df.T] ).T
             resdf_s = pd.concat( [resdf_s.T, pcaw_df.T] ).T
     #
-    if bVerbose:
+    if bVerbose :
         print ( 'RETURNING: ')
         print ( 'FEATURE MAP, SAMPLE MAP, FULL FEATURE HIERARCHY, FULL SAMPLE HIERARCHY' )
     return ( resdf_f , resdf_s , hierarch_f_df, hierarch_s_df )
@@ -203,7 +202,9 @@ if __name__ == '__main__' :
         umap_n_neighbors = n_neighbors	,
         umap_local_connectivity = local_connectivity ,
         umap_seed = transform_seed	,
-	hierarchy_cmd = cmd 	,
-        add_labels = add_labels )
+	hierarchy_cmd = cmd		,
+        add_labels = add_labels		,
+	alignment_label = ''		,
+	sample_label = ''		)
 
 
