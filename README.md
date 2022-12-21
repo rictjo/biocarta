@@ -59,6 +59,35 @@ if __name__ == '__main__' :
     hierarchy_analytes  = results[2]
     hierarchy_samples   = results[3]
 ```
+or just call it using the default values:
+```
+import pandas as pd
+import numpy  as np
+
+if __name__ == '__main__' :
+    from biocarta.quantification import full_mapping
+    #
+    adf = pd.read_csv('analytes.tsv',sep='\t',index_col=0)
+    #
+    adf = adf.iloc[ np.inf != np.abs( 1.0/np.std(adf.values,1) ) ,
+                    np.inf != np.abs( 1.0/np.std(adf.values,0) ) ].copy()
+    jdf = pd.read_csv('journal.tsv',sep='\t',index_col=0)
+    jdf = jdf.loc[:,adf.columns.values]
+    #
+    alignment_label , sample_label = 'Disease' , None
+    add_labels = ['Cell-line']
+    #
+    results = full_mapping ( adf , jdf  ,
+        bVerbose = True			,
+        n_clusters = [40,80,120]        ,
+        add_labels = add_labels         ,
+        alignment_label = alignment_label )
+    #
+    map_analytes        = results[0]
+    map_samples         = results[1]
+    hierarchy_analytes  = results[2]
+    hierarchy_samples   = results[3]
+```
 and ploting the information of the map analytes yields :
 [Cancer Disease Example](https://gist.github.com/rictjo/9cc40579914a51bffe7df442fec140f4)
 
