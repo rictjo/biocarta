@@ -20,28 +20,33 @@ from impetuous.clustering	import distance_matrix_to_absolute_coordinates
 
 def create_mapping ( distm:np.array , cmd:str	= 'max'	,
                      index_labels:list[str]	= None	,
-                     n_clusters:int		= None	,
+                     n_clusters:list[int]	= None	,
                      bExtreme:bool		= True	,
                      bDoUmap:bool		= True	,
                      umap_dimension:int		= 2	,
                      n_neighbors:int		= 20	,
                      MF:np.array		= None	,
                      n_proj:int			= 2	,
-                     local_connectivity:float	= 20	,
+                     local_connectivity:float	= 20.	,
                      transform_seed:int = 42 ) -> tuple[pd.DataFrame] :
-    #
+    if not n_clusters is None :
+        n_cl = n_clusters[0]
+
     clabels_n , clabels_o , hierarch_df, sol = generate_clustering_labels ( distm ,
-            labels = index_labels , cmd = cmd , n_clusters = n_clusters ,
+            labels = index_labels , cmd = cmd , n_clusters = n_cl ,
             bExtreme = bExtreme )
-    #
-    fully_connected_at = float( hierarch_df.index.values[-1] )
+
+    fully_connected_at		= float( hierarch_df.index.values[-1] )
+    optimally_connected_at	= float( hierarch_df.index.values[np.argmax(sol[1])] )
     if n_proj is None :
-        n_proj = len(distm)
+        n_proj = len ( distm )
     #
-    if MF is None : # IF NOT PRECOMPUTED
-        Xf = distm * ( distm <= fully_connected_at )
-        # distance_matrix_to_absolute_coordinates ( distm ,
-        #    n_dimensions = -1 , bLegacy = False ) # WASTE OF COMPUTATION
+    if MF is None :
+        # IF NOT PRECOMPUTED
+        # WASTE OF COMPUTATION ...
+        Xf = distance_matrix_to_absolute_coordinates ( distm * (distm<=fully_connected_at) ,
+                n_dimensions = -1 , bLegacy = False )
+        Mf = Xf
     else :
         Xf = MF
     #
@@ -68,15 +73,22 @@ def create_mapping ( distm:np.array , cmd:str	= 'max'	,
         resdf.loc[:,'cids.max']  = clabels_o
     if not clabels_n is None :
         resdf.loc[:,'cids.user'] = clabels_n
-    #
+        if 'list' in str(type(n_clusters)) :
+            for i in range(len(hierarch_df)) :
+                labs	= hierarch_df.iloc[i,:].values
+                N	= len( set( labs ) )
+                if N in set( n_clusters ) :
+                    resdf.loc[:,'cids.user.'+str(N)] = labs
+
     return ( resdf, hierarch_df , pd.DataFrame(sol) )
 
+
 def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
-        bVerbose:bool = False , bExtreme:bool = True , force_n_clusters:int = None ,
+        bVerbose:bool = False , bExtreme:bool = True , n_clusters:list[int] = None ,
         n_components:int = None , bDoUmap:bool = True ,
-        distance_type:str = 'correlation,spearman,absolute' ,
+        distance_type:str  = 'covariation' , # 'correlation,spearman,absolute' ,
         umap_dimension:int = 2 , umap_n_neighbors:int = 20 , umap_local_connectivity:float = 2. ,
-        umap_seed:int = 42 , hierarchy_cmd:str = 'max' , divergence = lambda r : np.exp(r*2) ,
+        umap_seed:int = 42 , hierarchy_cmd:str = 'max' , divergence = lambda r : np.exp(r) ,
         add_labels:list[str] = None , sample_label:str = None , alignment_label:str = None ,
 	n_projections:int = 2 , directory:str = None ) -> tuple[pd.DataFrame] :
     #
@@ -96,20 +108,29 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
     local_connectivity	= umap_local_connectivity
     transform_seed	= umap_seed
     cmd			= hierarchy_cmd
-    bRemoveCurse_	= True # False
+    bRemoveCurse_	= True
     nRound_		= None
     #
     from impetuous.special import zvals
     input_values = zvals( adf.values )['z']
     #
+    input_values_f = input_values
+    input_values_s = input_values.T
     MF_f , MF_s = None , None
-    if False : # DECOMPOSE THE DISTM IF FALSE, NOT DONE
+    if 'covariation' in distance_type :
         u , s , vt = np.linalg.svd ( input_values , False )
         MF_f = u*s
+        input_values_f = MF_f
         MF_s = vt.T*s
+        input_values_s = MF_s
+        distance_type = 'euclidean'
+    else :
+        if bVerbose :
+            print ( "WARNING : USE THE euclidean SETTING FOR DISTANCE TYPE" )
+
     #
     from impetuous.clustering import sclinkages
-    distm_features = distance_calculation ( input_values  , distance_type ,
+    distm_features = distance_calculation ( input_values_f  , distance_type ,
                              bRemoveCurse = bRemoveCurse_ , nRound = nRound_ )
     #
     if not bRemoveCurse_ :
@@ -129,10 +150,10 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
         soldf_f .to_csv( header_str + 'soldf_f.tsv' , sep='\t' )
         hierarch_f_df.to_csv( header_str + 'hierarch_f.tsv' , sep='\t' )
     #
-    distm_samples  = distance_calculation ( input_values.T , distance_type ,
+    distm_samples  = distance_calculation ( input_values_s , distance_type ,
 			     bRemoveCurse = bRemoveCurse_ , nRound = nRound_ )
     distm_samples *= divergence ( distm_samples )
-
+    #
     resdf_s , hierarch_s_df , soldf_s = create_mapping ( distm = distm_samples ,
                      index_labels = adf.columns.values , cmd = hierarchy_cmd , MF = MF_s ,
                      n_clusters   = n_clusters  , bExtreme = bExtreme ,
@@ -170,6 +191,7 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
 
 
 if __name__ == '__main__' :
+    # from biocarta.quantification import full_mapping
     #
     adf = pd.read_csv('analytes.tsv',sep='\t',index_col=0)
     #
@@ -179,33 +201,31 @@ if __name__ == '__main__' :
     jdf = pd.read_csv('journal.tsv',sep='\t',index_col=0)
     jdf = jdf.loc[:,adf.columns.values]
     #
-    #adf = adf.iloc[:200,:]
-    alignment_label , sample_label = 'Disease' , 'sample'
+    alignment_label , sample_label = 'Disease' , None
     add_labels = ['Cell-line']
     #
     cmd                = 'max'
     bVerbose           = True
     bExtreme           = True
-    n_clusters         = 80
-    n_components       = None
+    n_clusters         = [20,40,60,80,100]
+    n_components       = None # USE ALL INFORMATION
     bDoUmap            = True
     umap_dimension     = 2
-    n_neighbors        = 20.
-    local_connectivity = 2.
+    n_neighbors        = 20
+    local_connectivity = 20.
     transform_seed     = 42
     #
     print ( adf , jdf )
     #
-    distance_type = 'correlation,spearman,absolute'
-    # distance_type = 'euclidean'
+    # distance_type = 'correlation,spearman,absolute' # DONT USE THIS
+    distance_type = 'covariation' # BECOMES CO-EXPRESSION BASED
     #
-    print ( 'DOING THIS' , bVerbose )
-    full_mapping ( adf , jdf ,
-        bVerbose = bVerbose	,
-	bExtreme = bExtreme	,
-	force_n_clusters = n_clusters	,
+    results = full_mapping ( adf , jdf			,
+        bVerbose = bVerbose		,
+	bExtreme = bExtreme		,
+	n_clusters = n_clusters		,
         n_components = n_components 	,
-	bDoUmap = bDoUmap	,
+	bDoUmap = bDoUmap		,
         distance_type = distance_type  	,
         umap_dimension = umap_dimension	,
         umap_n_neighbors = n_neighbors	,
@@ -213,7 +233,11 @@ if __name__ == '__main__' :
         umap_seed = transform_seed	,
 	hierarchy_cmd = cmd		,
         add_labels = add_labels		,
-	alignment_label = alignment_label,
+	alignment_label = alignment_label ,
 	sample_label = None	)
-
+    #
+    map_analytes	= results[0]
+    map_samples		= results[1]
+    hierarchy_analytes	= results[2]
+    hierarchy_samples   = results[3]
 
