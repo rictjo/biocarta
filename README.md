@@ -1,6 +1,11 @@
 # Biocarta
 Creating Cartographic Representations of Biological Data
 
+# Installation
+```
+pip install biocarta
+```
+
 # Example code
 ```
 if __name__ == '__main__' :
