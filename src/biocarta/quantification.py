@@ -1,5 +1,5 @@
 """
-Copyright 2022 RICHARD TJÖRNHAMMAR
+Copyright 2023 RICHARD TJÖRNHAMMAR
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -22,24 +22,13 @@ def create_mapping ( distm:np.array , cmd:str	= 'max'	,
                      index_labels:list[str]	= None	,
                      n_clusters:list[int]	= None	,
                      bExtreme:bool		= True	,
-                     bDoUmap:bool		= True	,
+                     bUseUmap:bool		= False	,
                      umap_dimension:int		= 2	,
                      n_neighbors:int		= 20	,
                      MF:np.array		= None	,
                      n_proj:int			= 2	,
                      local_connectivity:float	= 20.	,
                      transform_seed:int = 42 ) -> tuple[pd.DataFrame] :
-    if not n_clusters is None :
-        n_cl = n_clusters[0]
-
-    clabels_n , clabels_o , hierarch_df, sol = generate_clustering_labels ( distm ,
-            labels = index_labels , cmd = cmd , n_clusters = n_cl ,
-            bExtreme = bExtreme )
-
-    fully_connected_at		= float( hierarch_df.index.values[-1] )
-    optimally_connected_at	= float( hierarch_df.index.values[np.argmax(sol[1])] )
-    if n_proj is None :
-        n_proj = len ( distm )
     #
     if MF is None :
         # IF NOT PRECOMPUTED
@@ -50,20 +39,30 @@ def create_mapping ( distm:np.array , cmd:str	= 'max'	,
     else :
         Xf = MF
     #
-    if bDoUmap :
-        Uf = pd.DataFrame( umap.UMAP( local_connectivity	= local_connectivity	,
-                                      n_components		= int(umap_dimension)	,
-                                      n_neighbors		= int(n_neighbors)	,
-                                      transform_seed		= transform_seed	,
-                                        )\
-					.fit_transform( Xf ) )
-        resdf = pd.DataFrame( Uf )
-        resdf .index = index_labels
-        resdf .columns = ['UMAP.'+str(i) for i in range(umap_dimension)]
-    else :
-        print ( "FATAL : NO OTHER DR METHOD SPECIFIED/IMPLEMENTED" )
-        print ( "      : SET bDoUmap TO True IN create_mapping" )
-        exit(1)
+    Uf = pd.DataFrame( umap.UMAP( local_connectivity	= local_connectivity	,
+                                  n_components		= int(umap_dimension)	,
+                                  n_neighbors		= int(n_neighbors)	,
+                                  transform_seed	= transform_seed	,
+                                    ) .fit_transform( Xf ) )
+    resdf = pd.DataFrame( Uf )
+    resdf .index = index_labels
+    resdf .columns = ['UMAP.'+str(i) for i in range(umap_dimension)]
+    #
+    if bUseUmap :
+        distm = distance_calculation ( Uf , 'euclidean' ,
+                             bRemoveCurse = True , nRound = None )
+
+    if not n_clusters is None :
+        n_cl = n_clusters[0]
+
+    clabels_n , clabels_o , hierarch_df, sol = generate_clustering_labels ( distm ,
+            labels = index_labels , cmd = cmd , n_clusters = n_cl ,
+            bExtreme = bExtreme )
+
+    fully_connected_at          = float( hierarch_df.index.values[-1] )
+    optimally_connected_at      = float( hierarch_df.index.values[np.argmax(sol[1])] )
+    if n_proj is None :
+        n_proj = len ( distm )
     #
     if not MF is None : # THIS IS NOT REALLY NEEDED
         for i in range ( n_proj ) :
@@ -85,12 +84,12 @@ def create_mapping ( distm:np.array , cmd:str	= 'max'	,
 
 def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
         bVerbose:bool = False , bExtreme:bool = True , n_clusters:list[int] = None ,
-        n_components:int = None , bDoUmap:bool = True ,
+        n_components:int = None , bUseUmap:bool = False ,
         distance_type:str  = 'covariation' , # 'correlation,spearman,absolute' ,
         umap_dimension:int = 2 , umap_n_neighbors:int = 20 , umap_local_connectivity:float = 2. ,
         umap_seed:int = 42 , hierarchy_cmd:str = 'max' , divergence = lambda r : np.exp(r) ,
         add_labels:list[str] = None , sample_label:str = None , alignment_label:str = None ,
-	n_projections:int = 2 , directory:str = None ) -> tuple[pd.DataFrame] :
+        n_projections:int = 2 , directory:str = None ) -> tuple[pd.DataFrame] :
     #
     if bVerbose :
         import time
@@ -126,21 +125,18 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
         distance_type = 'euclidean'
     else :
         if bVerbose :
-            print ( "WARNING : USE THE euclidean SETTING FOR DISTANCE TYPE" )
-
+            print ( "WARNING : USE THE covariation SETTING FOR DISTANCE TYPE" )
     #
-    from impetuous.clustering import sclinkages
-    distm_features = distance_calculation ( input_values_f  , distance_type ,
-                             bRemoveCurse = bRemoveCurse_ , nRound = nRound_ )
-    #
+    distm_features = distance_calculation ( input_values_f , distance_type ,
+                         bRemoveCurse = bRemoveCurse_ , nRound = nRound_ )
     if not bRemoveCurse_ :
-        divergence = lambda r : 1
+        divergence  = lambda r : 1
     distm_features *= divergence ( distm_features )
     #
     resdf_f , hierarch_f_df , soldf_f = create_mapping ( distm = distm_features ,
                      index_labels = adf.index.values , cmd = hierarchy_cmd , MF = MF_f ,
                      n_clusters  = n_clusters  , bExtreme = bExtreme ,
-                     bDoUmap     = bDoUmap     , umap_dimension = umap_dimension,
+                     bUseUmap    = bUseUmap    , umap_dimension = umap_dimension,
                      n_neighbors = n_neighbors , local_connectivity = local_connectivity ,
                      transform_seed = transform_seed, n_proj = n_projections )
     #
@@ -148,16 +144,16 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
         print ( 'STORING RESULTS > ', 'resdf_f.tsv , soldf_f.tsv , hierarch_f.tsv' )
         resdf_f .to_csv( header_str + 'resdf_f.tsv' , sep='\t' )
         soldf_f .to_csv( header_str + 'soldf_f.tsv' , sep='\t' )
-        hierarch_f_df.to_csv( header_str + 'hierarch_f.tsv' , sep='\t' )
+        hierarch_f_df .to_csv( header_str + 'hierarch_f.tsv' , sep='\t' )
     #
     distm_samples  = distance_calculation ( input_values_s , distance_type ,
-			     bRemoveCurse = bRemoveCurse_ , nRound = nRound_ )
+                             bRemoveCurse = bRemoveCurse_ , nRound = nRound_ )
     distm_samples *= divergence ( distm_samples )
     #
     resdf_s , hierarch_s_df , soldf_s = create_mapping ( distm = distm_samples ,
                      index_labels = adf.columns.values , cmd = hierarchy_cmd , MF = MF_s ,
                      n_clusters   = n_clusters  , bExtreme = bExtreme ,
-                     bDoUmap      = bDoUmap     , umap_dimension = umap_dimension,
+                     bUseUmap     = bUseUmap    , umap_dimension = umap_dimension,
                      n_neighbors  = n_neighbors , local_connectivity = local_connectivity ,
                      transform_seed = transform_seed , n_proj = n_projections )
     #
@@ -209,7 +205,6 @@ if __name__ == '__main__' :
     bExtreme           = True
     n_clusters         = [20,40,60,80,100]
     n_components       = None # USE ALL INFORMATION
-    bDoUmap            = True
     umap_dimension     = 2
     n_neighbors        = 20
     local_connectivity = 20.
@@ -225,7 +220,7 @@ if __name__ == '__main__' :
 	bExtreme = bExtreme		,
 	n_clusters = n_clusters		,
         n_components = n_components 	,
-	bDoUmap = bDoUmap		,
+        bUseUmap=False ,
         distance_type = distance_type  	,
         umap_dimension = umap_dimension	,
         umap_n_neighbors = n_neighbors	,
