@@ -97,6 +97,17 @@ if __name__ == '__main__' :
 and ploting the information of the map analytes yields :
 [Cancer Disease Example](https://gist.github.com/rictjo/9cc40579914a51bffe7df442fec140f4)
 
+You can also run an alternative algorithm where the UMAP coordinates are employed directly for clustering by setting
+```
+    results = full_mapping ( adf , jdf  ,
+        bVerbose = True			        ,
+        bUseUmap = True                 ,
+        n_clusters = [40,80,120]        ,
+        add_labels = add_labels         ,
+        alignment_label = alignment_label )
+```
+with the following [results](https://gist.github.com/rictjo/8be5b5a9cc7f06ea7455d6c6ecc11ad8).
+
 Download the zip and open the html index:
 ```
 chromium index.html
