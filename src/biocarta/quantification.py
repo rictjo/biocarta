@@ -54,6 +54,8 @@ def create_mapping ( distm:np.array , cmd:str	= 'max'	,
 
     if not n_clusters is None :
         n_cl = n_clusters[0]
+    else :
+        n_cl = 1
 
     clabels_n , clabels_o , hierarch_df, sol = generate_clustering_labels ( distm ,
             labels = index_labels , cmd = cmd , n_clusters = n_cl ,
