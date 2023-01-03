@@ -33,7 +33,7 @@ def create_mapping ( distm:np.array , cmd:str	= 'max'	,
     if MF is None :
         # IF NOT PRECOMPUTED
         # WASTE OF COMPUTATION ...
-        Xf = distance_matrix_to_absolute_coordinates ( distm * (distm<=fully_connected_at) ,
+        Xf = distance_matrix_to_absolute_coordinates ( distm ,
                 n_dimensions = -1 , bLegacy = False )
         Mf = Xf
     else :
