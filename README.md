@@ -29,9 +29,9 @@ if __name__ == '__main__' :
     cmd                = 'max'
     # WRITE FILES AND MAKE NOISE
     bVerbose           = True
-    # CREATE AN OPTIMIZED REPRESENATION
+    # CREATE AN OPTIMIZED REPRESENTATION
     bExtreme           = True
-    # WE MIGHT WANT SOME SPECIFIC INTERSECTIONS
+    # WE MIGHT WANT SOME SPECIFIC INTERSECTIONS OF THE HIERARCHY
     n_clusters         = [20,40,60,80,100]
     # USE ALL INFORMATION
     n_components       = None
@@ -94,7 +94,7 @@ if __name__ == '__main__' :
     hierarchy_analytes  = results[2]
     hierarchy_samples   = results[3]
 ```
-and ploting the information of the map analytes yields :
+and plotting the information of the map analytes yields :
 [Cancer Disease Example](https://gist.github.com/rictjo/9cc40579914a51bffe7df442fec140f4)
 
 You can also run an alternative algorithm where the UMAP coordinates are employed directly for clustering by setting
