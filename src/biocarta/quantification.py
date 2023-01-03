@@ -168,6 +168,8 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
     pcas_df , pcaw_df = None , None
     if not jdf is None :
         if not ( alignment_label is None ) :
+            #
+            # MULTIVAR ALIGNED PCA
             from impetuous.quantification import multivariate_aligned_pca
             if sample_label is None :
                 jdf.loc['samplenames'] = jdf.columns.values
@@ -175,12 +177,23 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
             pcas_df , pcaw_df = multivariate_aligned_pca ( adf , jdf ,
                     sample_label = sample_label , align_to = alignment_label ,
                     n_components = n_components , add_labels = add_labels )
+            #
+            # ENCODED PLS REGRESSION
+            from impetuous.quantification import run_rpls_regression as epls
+            jdf = jdf.rename(index={alignment_label:'AL0xXx'})
+            res = epls ( analyte_df=adf, journal_df=jdf, formula = 'Expression~C(AL0xXx)' )
+            jdf = jdf.rename(index={'AL0xXx':alignment_label})
+            res[0].columns = [ 'EPLS.' + v for v in res[0].columns.values ]
+            res[1].columns = [ 'EPLS.' + v for v in res[1].columns.values ]
+            #
             if bVerbose :
-                print ( 'STORING RESULTS > ', 'pcas_df.tsv', 'pcaw_df.tsv' )
-                pcas_df .to_csv( header_str + 'pcas_df.tsv','\t' )
-                pcaw_df .to_csv( header_str + 'pcaw_df.tsv','\t' )
-            resdf_f = pd.concat( [resdf_f.T, pcas_df.T] ).T
-            resdf_s = pd.concat( [resdf_s.T, pcaw_df.T] ).T
+                print ( 'STORING RESULTS > ', 'pcas_df.tsv', 'pcaw_df.tsv', 'epls_f.tsv' , 'epls_s.tsv' )
+                pcas_df .to_csv ( header_str + 'pcas_df.tsv', sep='\t' )
+                pcaw_df .to_csv ( header_str + 'pcaw_df.tsv', sep='\t' )
+                res[ 0 ].to_csv ( header_str + 'epls_f.tsv' , sep='\t' )
+                res[ 1 ].to_csv ( header_str + 'epls_s.tsv' , sep='\t' )
+            resdf_f = pd.concat( [resdf_f.T, pcas_df.T , res[0].T ] ).T
+            resdf_s = pd.concat( [resdf_s.T, pcaw_df.T , res[1].T ] ).T
     #
     if bVerbose :
         print ( 'RETURNING: ')
