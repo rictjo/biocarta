@@ -92,7 +92,7 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
         umap_dimension:int = 2 , umap_n_neighbors:int = 20 , umap_local_connectivity:float = 2. ,
         umap_seed:int = 42 , hierarchy_cmd:str = 'max' , divergence = lambda r : np.exp(r) ,
         add_labels:list[str] = None , sample_label:str = None , alignment_label:str = None ,
-        n_projections:int = 2 , directory:str = None ) -> tuple[pd.DataFrame] :
+        n_projections:int = 2 , directory:str = None , epls_ownership:str = 'angle' ) -> tuple[pd.DataFrame] :
     #
     if bVerbose :
         import time
@@ -182,7 +182,7 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
             # ENCODED PLS REGRESSION
             from impetuous.quantification import run_rpls_regression as epls
             jdf = jdf.rename(index={alignment_label:'AL0xXx'})
-            res = epls ( analyte_df=adf, journal_df=jdf, formula = 'Expression~C(AL0xXx)' )
+            res = epls ( analyte_df=adf, journal_df=jdf, formula = 'Expression~C(AL0xXx)' , owner_by = epls_ownership )
             jdf = jdf.rename(index={'AL0xXx':alignment_label})
             res[0].columns = [ 'EPLS.' + v for v in res[0].columns.values ]
             res[1].columns = [ 'EPLS.' + v for v in res[1].columns.values ]
