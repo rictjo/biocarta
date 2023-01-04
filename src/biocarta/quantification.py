@@ -65,10 +65,11 @@ def create_mapping ( distm:np.array , cmd:str	= 'max'	,
     optimally_connected_at      = float( hierarch_df.index.values[np.argmax(sol[1])] )
     if n_proj is None :
         n_proj = len ( distm )
-    #
-    if not MF is None : # THIS IS NOT REALLY NEEDED
-        for i in range ( n_proj ) :
-            resdf.T.loc[ 'MFX.' + str(i) ] = Xf.T[i]
+    if n_proj == -1 :
+        n_proj = len(MF.T)
+    resdf = pd.concat([resdf ,
+		       pd.DataFrame( np.array([mf for mf in MF.T][:n_proj]).T ,columns= [ 'MFX.' + str(i) for i in range(n_proj)],index=resdf.index )],
+		      axis=1 )
     #
     if not clabels_o is None :
         resdf.loc[:,'cids.max']  = clabels_o
