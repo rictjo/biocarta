@@ -26,6 +26,7 @@ def create_mapping ( distm:np.array , cmd:str	= 'max'	,
                      umap_dimension:int		= 2	,
                      n_neighbors:int		= 20	,
                      MF:np.array		= None	,
+                     bNonEuclideanBackprojection:bool = False ,
                      n_proj:int			= 2	,
                      local_connectivity:float	= 20.	,
                      transform_seed:int = 42 ) -> tuple[pd.DataFrame] :
@@ -33,9 +34,13 @@ def create_mapping ( distm:np.array , cmd:str	= 'max'	,
     if MF is None :
         # IF NOT PRECOMPUTED
         # WASTE OF COMPUTATION ...
-        Xf = distance_matrix_to_absolute_coordinates ( distm ,
+        if bNonEuclideanBackprojection :
+            u , s , vt = np.linalg.svd ( distm , False )
+            Xf = u*s
+        else :
+            Xf = distance_matrix_to_absolute_coordinates ( distm ,
                 n_dimensions = -1 , bLegacy = False )
-        Mf = Xf
+        MF = Xf
     else :
         Xf = MF
     #
@@ -92,7 +97,8 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
         umap_dimension:int = 2 , umap_n_neighbors:int = 20 , umap_local_connectivity:float = 2. ,
         umap_seed:int = 42 , hierarchy_cmd:str = 'max' , divergence = lambda r : np.exp(r) ,
         add_labels:list[str] = None , sample_label:str = None , alignment_label:str = None ,
-        n_projections:int = 2 , directory:str = None , epls_ownership:str = 'angle' ) -> tuple[pd.DataFrame] :
+        n_projections:int = 2 , directory:str = None ,
+        epls_ownership:str = 'angle' , bNonEuclideanBackprojection:bool = False ) -> tuple[pd.DataFrame] :
     #
     if bVerbose :
         import time
@@ -128,7 +134,7 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
         distance_type = 'euclidean'
     else :
         if bVerbose :
-            print ( "WARNING : USE THE covariation SETTING FOR DISTANCE TYPE" )
+            print ( "NOTIFICATION    >  I SUGGEST USING THE covariation SETTING FOR DISTANCE TYPE" )
     #
     distm_features = distance_calculation ( input_values_f , distance_type ,
                          bRemoveCurse = bRemoveCurse_ , nRound = nRound_ )
@@ -141,7 +147,8 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
                      n_clusters  = n_clusters  , bExtreme = bExtreme ,
                      bUseUmap    = bUseUmap    , umap_dimension = umap_dimension,
                      n_neighbors = n_neighbors , local_connectivity = local_connectivity ,
-                     transform_seed = transform_seed, n_proj = n_projections )
+                     transform_seed = transform_seed, n_proj = n_projections ,
+                     bNonEuclideanBackprojection = bNonEuclideanBackprojection )
     #
     if bVerbose :
         print ( 'STORING RESULTS > ', 'resdf_f.tsv , soldf_f.tsv , hierarch_f.tsv' )
@@ -158,7 +165,8 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
                      n_clusters   = n_clusters  , bExtreme = bExtreme ,
                      bUseUmap     = bUseUmap    , umap_dimension = umap_dimension,
                      n_neighbors  = n_neighbors , local_connectivity = local_connectivity ,
-                     transform_seed = transform_seed , n_proj = n_projections )
+                     transform_seed = transform_seed , n_proj = n_projections ,
+                     bNonEuclideanBackprojection = bNonEuclideanBackprojection )
     #
     if bVerbose :
         print ( 'STORING RESULTS > ', 'resdf_s.tsv , soldf_s.tsv , hierarch_s.tsv' )
@@ -228,15 +236,15 @@ if __name__ == '__main__' :
     #
     print ( adf , jdf )
     #
-    # distance_type = 'correlation,spearman,absolute' # DONT USE THIS
+    #distance_type = 'correlation,spearman,absolute' # DONT USE THIS
     distance_type = 'covariation' # BECOMES CO-EXPRESSION BASED
     #
-    results = full_mapping ( adf , jdf			,
+    results = full_mapping ( adf.iloc[:500,:] , jdf			,
         bVerbose = bVerbose		,
 	bExtreme = bExtreme		,
 	n_clusters = n_clusters		,
         n_components = n_components 	,
-        bUseUmap=False ,
+        bUseUmap = False 		,
         distance_type = distance_type  	,
         umap_dimension = umap_dimension	,
         umap_n_neighbors = n_neighbors	,
@@ -245,6 +253,7 @@ if __name__ == '__main__' :
 	hierarchy_cmd = cmd		,
         add_labels = add_labels		,
 	alignment_label = alignment_label ,
+        bNonEuclideanBackprojection = True ,
 	sample_label = None	)
     #
     map_analytes	= results[0]
