@@ -106,7 +106,7 @@ You can also run an alternative algorithm where the UMAP coordinates are employe
         add_labels = add_labels         ,
         alignment_label = alignment_label )
 ```
-with the following [results](https://gist.github.com/rictjo/8be5b5a9cc7f06ea7455d6c6ecc11ad8).
+with the following [results](https://rictjo.github.io/?https://gist.githubusercontent.com/rictjo/8be5b5a9cc7f06ea7455d6c6ecc11ad8/raw/e00ea663a1218718f542744a939e0b05c604e8ab/index.html).
 
 Download the zip and open the html index:
 ```
