@@ -21,3 +21,19 @@ def read_rds_distance_matrix ( filename = '../res1/distance/distances.rds' ) :
     pandas2ri.activate()
     readRDS = robjects.r['readRDS']
     return ( squareform(readRDS ('../res1/distance/distances.rds') ) )
+
+def inplace_norm ( x:pd.DataFrame , n:int=10 , random_state:int=42 ) -> pd.DataFrame :
+    from sklearn.preprocessing import quantile_transform
+    x = x.T # WE NORMALISE OVER ROWS
+    nvals = quantile_transform ( x.values[:-1] , random_state=random_state , copy=True )
+    return ( pd.DataFrame( nvals , index=x.index.values[:-1] , columns=x.columns.values ).T )
+
+def quantile_class_normalisation ( adf:pd.DataFrame , classes:list[str]=None ,
+		 n:int=10 , random_state:int=42 ) -> pd.DataFrame :
+    if classes is None :
+        from scipy.stats import rankdata
+        return ( adf.apply(lambda x:(rankdata(x.values,'average')-0.5)/len(set(x.values))) )
+    else :
+        adf.loc['QuantileClasses'] = classes
+        return ( adf.T.groupby('QuantileClasses') .apply( lambda x : inplace_norm( x ,
+		 n=n , random_state=random_state) ).T )
