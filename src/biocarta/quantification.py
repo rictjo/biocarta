@@ -97,7 +97,7 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
         umap_dimension:int = 2 , umap_n_neighbors:int = 20 , umap_local_connectivity:float = 2. ,
         umap_seed:int = 42 , hierarchy_cmd:str = 'max' , divergence = lambda r : np.exp(r) ,
         add_labels:list[str] = None , sample_label:str = None , alignment_label:str = None ,
-        n_projections:int = 2 , directory:str = None ,
+        n_projections:int = 2 , directory:str = None , bQN:bool=False ,
         epls_ownership:str = 'angle' , bNonEuclideanBackprojection:bool = False ) -> tuple[pd.DataFrame] :
     #
     if bVerbose :
@@ -110,6 +110,9 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
     #
     adf = adf.iloc[ np.inf != np.abs( 1.0/np.std(adf.values,1) ) ,
                     np.inf != np.abs( 1.0/np.std(adf.values,0) ) ].copy()
+    if bQN :
+        from biocarta.special import quantile_class_normalisation
+        adf = quantile_class_normalisation ( adf )
     jdf = jdf.loc [ :,adf.columns.values.tolist() ].copy()
     #
     n_neighbors		= umap_n_neighbors
