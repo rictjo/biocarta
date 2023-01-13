@@ -97,7 +97,7 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
         umap_dimension:int = 2 , umap_n_neighbors:int = 20 , umap_local_connectivity:float = 2. ,
         umap_seed:int = 42 , hierarchy_cmd:str = 'max' , divergence = lambda r : np.exp(r) ,
         add_labels:list[str] = None , sample_label:str = None , alignment_label:str = None ,
-        n_projections:int = 2 , directory:str = None , bQN:bool=True ,
+        n_projections:int = 2 , directory:str = None , bQN:bool = False ,
         epls_ownership:str = 'angle' , bNonEuclideanBackprojection:bool = False ) -> tuple[pd.DataFrame] :
     #
     if bVerbose :
