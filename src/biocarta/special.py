@@ -49,3 +49,13 @@ def quantile_class_normalisation ( adf:pd.DataFrame , classes:list[str]=None ,
         adf.loc['QuantileClasses'] = classes
         return ( adf.T.groupby('QuantileClasses') .apply( lambda x : inplace_norm( x ,
                  n=n , random_state=random_state, axis=axis ) ).T )
+
+def symmetrize_broken_symmetry ( b_distm:np.array , method = 'average' ) -> np.array :
+    if method  == 'average' :
+        a_distm = np.mean(np.array([b_distm,b_distm.T]),0)
+    if method  == 'max' :
+        a_distm = np.max (np.array([b_distm,b_distm.T]),0)
+    if method  == 'min' :
+        a_distm = np.min (np.array([b_distm,b_distm.T]),0)
+    a_distm *= (1-np.eye(len(b_distm))>0 )
+    return ( a_distm )
