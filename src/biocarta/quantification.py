@@ -96,9 +96,12 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
         distance_type:str  = 'covariation' , # 'correlation,spearman,absolute' ,
         umap_dimension:int = 2 , umap_n_neighbors:int = 20 , umap_local_connectivity:float = 2. ,
         umap_seed:int = 42 , hierarchy_cmd:str = 'max' , divergence = lambda r : np.exp(r) ,
-        add_labels:list[str] = None , sample_label:str = None , alignment_label:str = None ,
-        n_projections:int = 2 , directory:str = None , bQN:bool = False ,
+        add_labels:list[str] = None , sample_label:str = None , alignment_label:str = None , bRemoveCurse=True ,
+        n_projections:int = 2 , directory:str = None , bQN:int = None ,
+        nNeighborFilter:list[int] = None , heal_symmetry_break_method:str = 'average' ,
         epls_ownership:str = 'angle' , bNonEuclideanBackprojection:bool = False ) -> tuple[pd.DataFrame] :
+    #
+    import biocarta.special as biox
     #
     if bVerbose :
         import time
@@ -110,17 +113,21 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
     #
     adf = adf.iloc[ np.inf != np.abs( 1.0/np.std(adf.values,1) ) ,
                     np.inf != np.abs( 1.0/np.std(adf.values,0) ) ].copy()
-    if bQN :
-        from biocarta.special import quantile_class_normalisation
-        adf = quantile_class_normalisation ( adf )
+    if not bQN is None :
+        adf = biox.quantile_class_normalisation ( adf , axis=bQN )
     jdf = jdf.loc [ :,adf.columns.values.tolist() ].copy()
     #
     n_neighbors		= umap_n_neighbors
     local_connectivity	= umap_local_connectivity
     transform_seed	= umap_seed
     cmd			= hierarchy_cmd
-    bRemoveCurse_	= True
+    bRemoveCurse_	= bRemoveCurse
     nRound_		= None
+    if not n_components is None :
+        m = np.min(np.shape(adf.values))
+        if n_components >= m :
+            n_components = m - 1
+            print ( 'WARNING SETTING n_components TO :' , n_components )
     #
     from impetuous.special import zvals
     input_values = zvals( adf.values )['z']
@@ -128,19 +135,37 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
     input_values_f = input_values
     input_values_s = input_values.T
     MF_f , MF_s = None , None
-    if 'covariation' in distance_type :
+    if 'covariation' in distance_type or 'coexpression' in distance_type :
         u , s , vt = np.linalg.svd ( input_values , False )
-        MF_f = u*s
+        # SINCE INPUT IS MEAN CENTERED THE COMPONENT COORDINATES CORRESPOND TO THE COVARIATION MATRIX
+        if not n_components is None :
+            s[n_components:] *= 0
+        MF_f = u*s # EQUIV TO : np.dot(u,np.diag(s))
         input_values_f = MF_f
         MF_s = vt.T*s
         input_values_s = MF_s
-        distance_type = 'euclidean'
+        if 'secondary[' in distance_type :	# THIS IS ACTUALLY A RATHER ODD THING TO DO
+						# BUT SOME POEPLE WILL WANT TO DO IT ANYWAY
+            distance_type = distance_type.split('secondary[')[1].split(']')[0]
+        else :
+            # HERE THE COMPONENTS ARE THE ABSOLUTE COORDINATES OF THE COVARIATION MATRIX
+            # I.E. COV = np.dot( MF_s , MF_s.T )/( len(MF_s)-1 )
+            distance_type = 'euclidean'
     else :
         if bVerbose :
             print ( "NOTIFICATION    >  I SUGGEST USING THE covariation SETTING FOR DISTANCE TYPE" )
     #
     distm_features = distance_calculation ( input_values_f , distance_type ,
                          bRemoveCurse = bRemoveCurse_ , nRound = nRound_ )
+    #
+    if not nNeighborFilter is None :
+        # LEAVE THIS OUT IT IS CRAP
+        print ( 'WARNING : CREATING SYMMETRY BREAK' )
+        from impetuous.clustering import nearest_neighbor_graph_matrix
+        snn_graph , gc_val = nearest_neighbor_graph_matrix ( distm=distm_features, nn=nNeighborFilter[0] )
+        distm_features = distm_features * ( snn_graph <= gc_val ) # APPLYING SNN FILTER
+        # FOR AGGLOMERATIVE HIERARCHICAL CLUSTERING THE MATRIX MUST BE SYMMETRIC
+        distm_features = biox.symmetrize_broken_symmetry ( distm_features , method = heal_symmetry_break_method )
     if not bRemoveCurse_ :
         divergence  = lambda r : 1
     distm_features *= divergence ( distm_features )
@@ -161,14 +186,22 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
     #
     distm_samples  = distance_calculation ( input_values_s , distance_type ,
                              bRemoveCurse = bRemoveCurse_ , nRound = nRound_ )
-    distm_samples *= divergence ( distm_samples )
+    #
+    if not nNeighborFilter is None : # LEAVE THIS OUT IT IS CRAP
+        print ( 'WARNING : CREATING SYMMETRY BREAK' )
+        snn_graph , gc_val = nearest_neighbor_graph_matrix ( distm=distm_samples, nn=nNeighborFilter[-1] )
+        distm_samples = distm_samples * ( snn_graph <= gc_val )
+        # FOR HIERARCHICAL CLUSTERING THE MATRIX MUST BE SYMMETRIC
+        distm_samples = biox.symmetrize_broken_symmetry ( distm_samples , method = heal_symmetry_break_method )
+    if not bRemoveCurse_ :
+        distm_samples *= divergence ( distm_samples )
     #
     resdf_s , hierarch_s_df , soldf_s = create_mapping ( distm = distm_samples ,
-                     index_labels = adf.columns.values , cmd = hierarchy_cmd , MF = MF_s ,
-                     n_clusters   = n_clusters  , bExtreme = bExtreme ,
-                     bUseUmap     = bUseUmap    , umap_dimension = umap_dimension,
-                     n_neighbors  = n_neighbors , local_connectivity = local_connectivity ,
-                     transform_seed = transform_seed , n_proj = n_projections ,
+                     index_labels = adf.columns.values	, cmd = hierarchy_cmd , MF = MF_s ,
+                     n_clusters   = n_clusters  	, bExtreme = bExtreme ,
+                     bUseUmap     = bUseUmap    	, umap_dimension = umap_dimension,
+                     n_neighbors  = n_neighbors 	, local_connectivity = local_connectivity ,
+                     transform_seed = transform_seed	, n_proj = n_projections ,
                      bNonEuclideanBackprojection = bNonEuclideanBackprojection )
     #
     if bVerbose :
