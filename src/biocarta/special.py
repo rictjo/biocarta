@@ -51,11 +51,18 @@ def quantile_class_normalisation ( adf:pd.DataFrame , classes:list[str]=None ,
                  n=n , random_state=random_state, axis=axis ) ).T )
 
 def symmetrize_broken_symmetry ( b_distm:np.array , method = 'average' ) -> np.array :
+    a_distm = None
     if method  == 'average' :
         a_distm = np.mean(np.array([b_distm,b_distm.T]),0)
     if method  == 'max' :
         a_distm = np.max (np.array([b_distm,b_distm.T]),0)
     if method  == 'min' :
         a_distm = np.min (np.array([b_distm,b_distm.T]),0)
-    a_distm *= (1-np.eye(len(b_distm))>0 )
+    if method  == 'svd' :
+        from impetuous.quantification   import distance_calculation
+        u_ , s_ , vt_ = np.linalg.svd( b_distm )
+        a_distm = distance_calculation ( u_*s_ , 'euclidean' , False , None )
+    if a_distm is None :
+        a_distm = np.mean(np.array([b_distm,b_distm.T]),0)
+    a_distm *= ( 1-np.eye(len(b_distm))>0 )
     return ( a_distm )
