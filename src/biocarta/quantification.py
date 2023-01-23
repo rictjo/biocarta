@@ -177,10 +177,10 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
             s[n_components:] *= 0
         MF_f = u*s	# EQUIV TO : np.dot(u,np.diag(s))
         MF_s = vt.T*s
-        if 'absolute' in distance_type :
-            MF_f = np.abs(MF_f)
-        if 'absolute' in distance_type :
-            MF_s = np.abs(MF_s)
+        if 'absolute' in distance_type.split('secondary[')[0] :
+            MF_f = np.abs( MF_f )
+        if 'absolute' in distance_type.split('secondary[')[0] :
+            MF_s = np.abs( MF_s )
     #
     if 'covariation' in distance_type or 'coexpression' in distance_type :
         input_values_f = MF_f
