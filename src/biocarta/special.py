@@ -66,3 +66,17 @@ def symmetrize_broken_symmetry ( b_distm:np.array , method = 'average' ) -> np.a
         a_distm = np.mean(np.array([b_distm,b_distm.T]),0)
     a_distm *= ( 1-np.eye(len(b_distm))>0 )
     return ( a_distm )
+
+def calculate_compositions( adf:pd.DataFrame , jdf:pd.DataFrame , label:str ) -> pd.DataFrame :
+    from impetuous.quantification import compositional_analysis
+    adf = adf.iloc[ np.inf != np.abs( 1.0/np.std(adf.values,1) ) ,
+                    np.inf != np.abs( 1.0/np.std(adf.values,0) ) ].copy()
+    jdf = jdf.loc[ : , adf.columns ]
+    adf .loc[ label ] = jdf.loc[ label ]
+    composition_df = adf.T.groupby(label).apply(np.sum).T.iloc[:-1,:].T.apply(compositional_analysis).T
+    composition_df .columns = ['Beta','Tau','Gini','Geni','TSI','FILLING']
+    return ( composition_df )
+
+def pivot_data ( mdf:pd.DataFrame , index:str ='index' , column:str = 'sample', values:str = 'value' ) -> pd.DataFrame :
+    pdf = mdf.pivot( index = index , columns = [column] , values = values )
+    return ( pdf )
