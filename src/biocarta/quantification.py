@@ -56,12 +56,11 @@ def create_mapping ( distm:np.array , cmd:str	= 'max'	,
     if bUseUmap :
         distm = distance_calculation ( Uf , 'euclidean' ,
                              bRemoveCurse = True , nRound = None )
-
     if not n_clusters is None :
         n_cl = n_clusters[0]
     else :
         n_cl = 1
-
+    #
     clabels_n , clabels_o , hierarch_df, sol = generate_clustering_labels ( distm ,
             labels = index_labels , cmd = cmd , n_clusters = n_cl ,
             bExtreme = bExtreme )
@@ -73,8 +72,9 @@ def create_mapping ( distm:np.array , cmd:str	= 'max'	,
     if n_proj == -1 :
         n_proj = len(MF.T)
     resdf = pd.concat([resdf ,
-		       pd.DataFrame( np.array([mf for mf in MF.T][:n_proj]).T ,columns= [ 'MFX.' + str(i) for i in range(n_proj)],index=resdf.index )],
-		      axis=1 )
+		       pd.DataFrame( np.array( [mf for mf in MF.T][:n_proj] ).T ,
+				columns= [ 'MFX.' + str(i) for i in range(n_proj)],index=resdf.index )],
+		       axis=1 )
     #
     if not clabels_o is None :
         resdf.loc[:,'cids.max']  = clabels_o
@@ -86,17 +86,17 @@ def create_mapping ( distm:np.array , cmd:str	= 'max'	,
                 N	= len( set( labs ) )
                 if N in set( n_clusters ) :
                     resdf.loc[:,'cids.user.'+str(N)] = labs
-
+    #
     return ( resdf, hierarch_df , pd.DataFrame(sol) )
 
 
 def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
         bVerbose:bool = False , bExtreme:bool = True , n_clusters:list[int] = None ,
-        n_components:int = None , bUseUmap:bool = False ,
+        n_components:int = None , bUseUmap:bool = False , bPreCompute:bool=True ,
         distance_type:str  = 'covariation' , # 'correlation,spearman,absolute' ,
         umap_dimension:int = 2 , umap_n_neighbors:int = 20 , umap_local_connectivity:float = 2. ,
         umap_seed:int = 42 , hierarchy_cmd:str = 'max' , divergence = lambda r : np.exp(r) ,
-        add_labels:list[str] = None , sample_label:str = None , alignment_label:str = None , bRemoveCurse=True ,
+        add_labels:list[str] = None , sample_label:str = None , alignment_label:str = None , bRemoveCurse:bool=True ,
         n_projections:int = 2 , directory:str = None , bQN:int = None ,
         nNeighborFilter:list[int] = None , heal_symmetry_break_method:str = 'average' ,
         epls_ownership:str = 'angle' , bNonEuclideanBackprojection:bool = False ) -> tuple[pd.DataFrame] :
@@ -105,14 +105,49 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
     #
     if bVerbose :
         import time
-        header_str = 'YMDHMS_'+'_'.join( list( str(t) for t in time.gmtime())[:-3] )+'_'
+        header_str = 'YMDHMS_' + '_'.join( list( str(t) for t in time.gmtime())[:-3] )+'_'
+        header_str = 'DMHMSY_' + time.ctime().replace(':','_').replace(' ','_') + '_'
         if not directory is None :
             if not directory[-1] == '/' :
                 directory = directory + '/'
             header_str = directory + header_str
+            #
+            # HERE WE INCLUDE ALL THE RUN PARAMETERS THAT ARE ACCESIBLE AS INPUTS
+            # AND FROM THE ENVIRONMENT AT THE START OF THE RUN
+            #
+            runinfo_file = 'params.txt'
+            run_dict = { 'bVerbose:bool':bVerbose , 'bExtreme:bool':bExtreme , 'n_clusters:list[int]':n_clusters ,
+        'n_components:int':n_components , 'bUseUmap:bool':bUseUmap , 'bPreCompute:bool':bPreCompute , 'distance_type:str':distance_type ,
+        'umap_dimension:int':umap_dimension , 'umap_n_neighbors:int':umap_n_neighbors , 'umap_local_connectivity:float':umap_local_connectivity ,
+        'umap_seed:int':umap_seed , 'hierarchy_cmd:str':hierarchy_cmd , 'divergence:lambda function': divergence ,
+        'add_labels:list[str]':add_labels , 'sample_label:str':sample_label , 'alignment_label:str':alignment_label ,
+        'bRemoveCurse:bool':bRemoveCurse , 'n_projections:int':n_projections , 'directory:str':directory , 'bQN:int':bQN ,
+        'nNeighborFilter:list[int]':nNeighborFilter , 'heal_symmetry_break_method:str':heal_symmetry_break_method ,
+        'epls_ownership:str':epls_ownership , 'bNonEuclideanBackprojection:bool':bNonEuclideanBackprojection }
+            ofile = open ( header_str + runinfo_file , 'w' )
+            for item in run_dict.items():
+                if 'list' in str(type(item[1])):
+                    print ( item[0],'\t=\t [', ','.join([str(i) for i in item[1]]) ,']', file=ofile )
+                else :
+                    print ( item[0],'\t=\t [', str(item[1]) ,']', file=ofile )
+            print ( 'PYTHON GLOBALS:\n ',
+			'\n'.join([ '\t=\t '.join([str(i) for i in item if not i is None]) for item in globals().items() if not item is None ] ),
+			file = ofile )
     #
     adf = adf.iloc[ np.inf != np.abs( 1.0/np.std(adf.values,1) ) ,
                     np.inf != np.abs( 1.0/np.std(adf.values,0) ) ].copy()
+    #
+    comp_df = None
+    if not jdf is None :
+        if not ( alignment_label is None ) :
+            if bVerbose :
+                print ( "CONDUCTING COMPOSITIONAL ANALYSIS" )
+            comp_df = biox.calculate_compositions ( adf , jdf, label = alignment_label )
+            comp_df.columns = [ alignment_label +'.'+ c for c in comp_df.columns.values ]
+            if bVerbose :
+                print (  'STORING RESULTS > ' , 'composition.tsv' )
+                comp_df .to_csv (  header_str + 'composition.tsv' , sep='\t' )
+    #
     if not bQN is None :
         adf = biox.quantile_class_normalisation ( adf , axis=bQN )
     jdf = jdf.loc [ :,adf.columns.values.tolist() ].copy()
@@ -135,14 +170,20 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
     input_values_f = input_values
     input_values_s = input_values.T
     MF_f , MF_s = None , None
-    if 'covariation' in distance_type or 'coexpression' in distance_type :
+    if 'covariation' in distance_type or 'coexpression' in distance_type or bPreCompute :
         u , s , vt = np.linalg.svd ( input_values , False )
         # SINCE INPUT IS MEAN CENTERED THE COMPONENT COORDINATES CORRESPOND TO THE COVARIATION MATRIX
         if not n_components is None :
             s[n_components:] *= 0
-        MF_f = u*s # EQUIV TO : np.dot(u,np.diag(s))
-        input_values_f = MF_f
+        MF_f = u*s	# EQUIV TO : np.dot(u,np.diag(s))
         MF_s = vt.T*s
+        if 'absolute' in distance_type :
+            MF_f = np.abs(MF_f)
+        if 'absolute' in distance_type :
+            MF_s = np.abs(MF_s)
+    #
+    if 'covariation' in distance_type or 'coexpression' in distance_type :
+        input_values_f = MF_f
         input_values_s = MF_s
         if 'secondary[' in distance_type :	# THIS IS ACTUALLY A RATHER ODD THING TO DO
 						# BUT SOME POEPLE WILL WANT TO DO IT ANYWAY
@@ -177,14 +218,13 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
                      n_neighbors = n_neighbors , local_connectivity = local_connectivity ,
                      transform_seed = transform_seed, n_proj = n_projections ,
                      bNonEuclideanBackprojection = bNonEuclideanBackprojection )
-    #
     if bVerbose :
         print ( 'STORING RESULTS > ', 'resdf_f.tsv , soldf_f.tsv , hierarch_f.tsv' )
         resdf_f .to_csv( header_str + 'resdf_f.tsv' , sep='\t' )
         soldf_f .to_csv( header_str + 'soldf_f.tsv' , sep='\t' )
         hierarch_f_df .to_csv( header_str + 'hierarch_f.tsv' , sep='\t' )
     #
-    distm_samples  = distance_calculation ( input_values_s , distance_type ,
+    distm_samples = distance_calculation ( input_values_s , distance_type ,
                              bRemoveCurse = bRemoveCurse_ , nRound = nRound_ )
     #
     if not nNeighborFilter is None : # LEAVE THIS OUT IT IS CRAP
@@ -193,8 +233,8 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
         distm_samples = distm_samples * ( snn_graph <= gc_val )
         # FOR HIERARCHICAL CLUSTERING THE MATRIX MUST BE SYMMETRIC
         distm_samples = biox.symmetrize_broken_symmetry ( distm_samples , method = heal_symmetry_break_method )
-    if not bRemoveCurse_ :
-        distm_samples *= divergence ( distm_samples )
+    #
+    distm_samples *= divergence ( distm_samples )
     #
     resdf_s , hierarch_s_df , soldf_s = create_mapping ( distm = distm_samples ,
                      index_labels = adf.columns.values	, cmd = hierarchy_cmd , MF = MF_s ,
@@ -213,8 +253,8 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
     pcas_df , pcaw_df = None , None
     if not jdf is None :
         if not ( alignment_label is None ) :
-            #
-            # MULTIVAR ALIGNED PCA
+            if bVerbose :
+                print ( "MULTIVAR ALIGNED PCA" )
             from impetuous.quantification import multivariate_aligned_pca
             if sample_label is None :
                 jdf.loc['samplenames'] = jdf.columns.values
@@ -222,22 +262,21 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
             pcas_df , pcaw_df = multivariate_aligned_pca ( adf , jdf ,
                     sample_label = sample_label , align_to = alignment_label ,
                     n_components = n_components , add_labels = add_labels )
-            #
-            # ENCODED PLS REGRESSION
+            if bVerbose :
+                print ( "ENCODED PLS REGRESSION" )
             from impetuous.quantification import run_rpls_regression as epls
             jdf = jdf.rename(index={alignment_label:'AL0xXx'})
             res = epls ( analyte_df=adf, journal_df=jdf, formula = 'Expression~C(AL0xXx)' , owner_by = epls_ownership )
             jdf = jdf.rename(index={'AL0xXx':alignment_label})
             res[0].columns = [ 'EPLS.' + v for v in res[0].columns.values ]
             res[1].columns = [ 'EPLS.' + v for v in res[1].columns.values ]
-            #
             if bVerbose :
                 print ( 'STORING RESULTS > ', 'pcas_df.tsv', 'pcaw_df.tsv', 'epls_f.tsv' , 'epls_s.tsv' )
                 pcas_df .to_csv ( header_str + 'pcas_df.tsv', sep='\t' )
                 pcaw_df .to_csv ( header_str + 'pcaw_df.tsv', sep='\t' )
                 res[ 0 ].to_csv ( header_str + 'epls_f.tsv' , sep='\t' )
                 res[ 1 ].to_csv ( header_str + 'epls_s.tsv' , sep='\t' )
-            resdf_f = pd.concat( [resdf_f.T, pcas_df.T , res[0].T ] ).T
+            resdf_f = pd.concat( [resdf_f.T, pcas_df.T , res[0].T , comp_df.T ] ).T
             resdf_s = pd.concat( [resdf_s.T, pcaw_df.T , res[1].T ] ).T
     #
     if bVerbose :
