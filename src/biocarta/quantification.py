@@ -14,6 +14,9 @@ import pandas as pd
 import numpy as np
 import umap
 
+import impetuous.quantification as impq
+import impetuous.clustering     as impc
+
 from impetuous.quantification	import distance_calculation
 from impetuous.clustering	import generate_clustering_labels
 from impetuous.clustering	import distance_matrix_to_absolute_coordinates
@@ -96,7 +99,7 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
         distance_type:str  = 'covariation' , # 'correlation,spearman,absolute' ,
         umap_dimension:int = 2 , umap_n_neighbors:int = 20 , umap_local_connectivity:float = 2. ,
         umap_seed:int = 42 , hierarchy_cmd:str = 'max' , divergence = lambda r : np.exp(r) ,
-        add_labels:list[str] = None , sample_label:str = None , alignment_label:str = None , bRemoveCurse:bool=True ,
+        add_labels:list[str] = None , sample_label:str = None , alignment_label:str = None , bRemoveCurse:bool=False ,
         n_projections:int = 2 , directory:str = None , bQN:int = None ,
         nNeighborFilter:list[int] = None , heal_symmetry_break_method:str = 'average' ,
         epls_ownership:str = 'angle' , bNonEuclideanBackprojection:bool = False ) -> tuple[pd.DataFrame] :
