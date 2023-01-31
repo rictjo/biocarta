@@ -32,6 +32,7 @@ def create_mapping ( distm:np.array , cmd:str	= 'max'	,
                      bNonEuclideanBackprojection:bool = False ,
                      n_proj:int			= 2	,
                      local_connectivity:float	= 20.	,
+                     Sfunc = lambda x:np.mean(x,0) ,
                      transform_seed:int = 42 ) -> tuple[pd.DataFrame] :
     #
     if MF is None :
@@ -66,7 +67,7 @@ def create_mapping ( distm:np.array , cmd:str	= 'max'	,
     #
     clabels_n , clabels_o , hierarch_df, sol = generate_clustering_labels ( distm ,
             labels = index_labels , cmd = cmd , n_clusters = n_cl ,
-            bExtreme = bExtreme )
+            bExtreme = bExtreme , Sfunc=Sfunc )
 
     fully_connected_at          = float( hierarch_df.index.values[-1] )
     optimally_connected_at      = float( hierarch_df.index.values[np.argmax(sol[1])] )
@@ -102,7 +103,8 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
         add_labels:list[str] = None , sample_label:str = None , alignment_label:str = None , bRemoveCurse:bool=False ,
         n_projections:int = 2 , directory:str = None , bQN:int = None ,
         nNeighborFilter:list[int] = None , heal_symmetry_break_method:str = 'average' ,
-        epls_ownership:str = 'angle' , bNonEuclideanBackprojection:bool = False ) -> tuple[pd.DataFrame] :
+        epls_ownership:str = 'angle' , bNonEuclideanBackprojection:bool = False ,
+        Sfunc = lambda x:np.mean(x,0) ) -> tuple[pd.DataFrame] :
     #
     import biocarta.special as biox
     #
@@ -126,7 +128,8 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
         'add_labels:list[str]':add_labels , 'sample_label:str':sample_label , 'alignment_label:str':alignment_label ,
         'bRemoveCurse:bool':bRemoveCurse , 'n_projections:int':n_projections , 'directory:str':directory , 'bQN:int':bQN ,
         'nNeighborFilter:list[int]':nNeighborFilter , 'heal_symmetry_break_method:str':heal_symmetry_break_method ,
-        'epls_ownership:str':epls_ownership , 'bNonEuclideanBackprojection:bool':bNonEuclideanBackprojection }
+        'epls_ownership:str':epls_ownership , 'bNonEuclideanBackprojection:bool':bNonEuclideanBackprojection ,
+        'Sfunc':Sfunc }
             ofile = open ( header_str + runinfo_file , 'w' )
             for item in run_dict.items():
                 if 'list' in str(type(item[1])):
@@ -220,7 +223,8 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
                      bUseUmap    = bUseUmap    , umap_dimension = umap_dimension,
                      n_neighbors = n_neighbors , local_connectivity = local_connectivity ,
                      transform_seed = transform_seed, n_proj = n_projections ,
-                     bNonEuclideanBackprojection = bNonEuclideanBackprojection )
+                     bNonEuclideanBackprojection = bNonEuclideanBackprojection ,
+                     Sfunc = Sfunc )
     if bVerbose :
         print ( 'STORING RESULTS > ', 'resdf_f.tsv , soldf_f.tsv , hierarch_f.tsv' )
         resdf_f .to_csv( header_str + 'resdf_f.tsv' , sep='\t' )
@@ -245,7 +249,8 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
                      bUseUmap     = bUseUmap    	, umap_dimension = umap_dimension,
                      n_neighbors  = n_neighbors 	, local_connectivity = local_connectivity ,
                      transform_seed = transform_seed	, n_proj = n_projections ,
-                     bNonEuclideanBackprojection = bNonEuclideanBackprojection )
+                     bNonEuclideanBackprojection = bNonEuclideanBackprojection ,
+                     Sfunc = Sfunc )
     #
     if bVerbose :
         print ( 'STORING RESULTS > ', 'resdf_s.tsv , soldf_s.tsv , hierarch_s.tsv' )
