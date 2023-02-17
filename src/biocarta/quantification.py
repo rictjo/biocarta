@@ -290,7 +290,7 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
     if bVerbose :
         print ( 'RETURNING: ')
         print ( 'FEATURE MAP, SAMPLE MAP, FULL FEATURE HIERARCHY, FULL SAMPLE HIERARCHY' )
-    return ( resdf_f , resdf_s , hierarch_f_df, hierarch_s_df )
+    return ( resdf_f , resdf_s , hierarch_f_df, hierarch_s_df , soldf_f , soldf_s )
 
 
 if __name__ == '__main__' :
