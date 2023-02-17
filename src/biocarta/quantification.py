@@ -104,7 +104,7 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
         n_projections:int = 2 , directory:str = None , bQN:int = None ,
         nNeighborFilter:list[int] = None , heal_symmetry_break_method:str = 'average' ,
         epls_ownership:str = 'angle' , bNonEuclideanBackprojection:bool = False ,
-        Sfunc = lambda x:np.mean(x,0) ) -> tuple[pd.DataFrame] :
+        Sfunc = lambda x:np.mean(x,0) , bAddPies:bool=False ) -> tuple[pd.DataFrame] :
     #
     import biocarta.special as biox
     #
@@ -129,7 +129,7 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
         'bRemoveCurse:bool':bRemoveCurse , 'n_projections:int':n_projections , 'directory:str':directory , 'bQN:int':bQN ,
         'nNeighborFilter:list[int]':nNeighborFilter , 'heal_symmetry_break_method:str':heal_symmetry_break_method ,
         'epls_ownership:str':epls_ownership , 'bNonEuclideanBackprojection:bool':bNonEuclideanBackprojection ,
-        'Sfunc':Sfunc }
+        'Sfunc':Sfunc , 'bAddPies:bool':bAddPies }
             ofile = open ( header_str + runinfo_file , 'w' )
             for item in run_dict.items():
                 if 'list' in str(type(item[1])):
@@ -148,7 +148,7 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
         if not ( alignment_label is None ) :
             if bVerbose :
                 print ( "CONDUCTING COMPOSITIONAL ANALYSIS" )
-            comp_df = biox.calculate_compositions ( adf , jdf, label = alignment_label )
+            comp_df = biox.calculate_compositions ( adf , jdf, label = alignment_label , bAddPies=bAddPies )
             comp_df.columns = [ alignment_label +'.'+ c for c in comp_df.columns.values ]
             if bVerbose :
                 print (  'STORING RESULTS > ' , 'composition.tsv' )
