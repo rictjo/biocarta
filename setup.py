@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name         = "biocarta",
-    version      = "0.2.17",
+    version      = "0.2.18",
     author       = "Richard Tjörnhammar",
     author_email = "richard.tjornhammar@gmail.com",
     description  = "",
@@ -13,7 +13,7 @@ setuptools.setup(
     long_description_content_type = "text/markdown",
     url = "https://github.com/rictjo/biocarta",
     packages = setuptools.find_packages('src'),
-    package_dir = {'biocarta':'src/biocarta','quantification':'src/quantification','special':'src/special'},
+    package_dir = {'biocarta':'src/biocarta','quantification':'src/quantification','special':'src/special','enrichment':'src/enrichment'},
     classifiers = [
         "Programming Language :: Python :: 3.9",
         "License :: OSI Approved :: Apache Software License",
