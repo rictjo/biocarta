@@ -97,7 +97,7 @@ def calculate_fisher_for_cluster_groups ( df:pd.DataFrame , label:str = None ,
                         n_depth = len(npath)-ipath
                         if n_depth>depth :
                             parent	= npath[ipath]
-                            n_depth	= depth
+                            depth	= n_depth
                             break
         return ( parent, depth )
 
