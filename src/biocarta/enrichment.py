@@ -77,7 +77,8 @@ def create_specificity_group_df ( acdf:pd.DataFrame , df_:pd.DataFrame , index_o
 
 
 def calculate_fisher_for_cluster_groups ( df:pd.DataFrame , label:str = None ,
-			gmtfile:str = None , pcfile:str = None , bVerbose:bool=True ,
+			gmtfile:str = None , pcfile:str = None ,
+                        bVerbose:bool = True , bShallow:bool = False ,
 			significance_level:float = None ) -> dict :
 
     def recalculate_parent_depth( nidx , tree ) :
@@ -97,7 +98,10 @@ def calculate_fisher_for_cluster_groups ( df:pd.DataFrame , label:str = None ,
                         n_depth = len(npath)-ipath
                         if n_depth>depth :
                             parent	= npath[ipath]
-                            depth	= n_depth
+                            if bShallow :
+                                n_depth	= depth
+                            else :
+                                depth	= n_depth
                             break
         return ( parent, depth )
 
