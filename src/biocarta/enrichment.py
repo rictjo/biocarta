@@ -84,11 +84,11 @@ def calculate_fisher_for_cluster_groups ( df:pd.DataFrame , label:str = None ,
                         gmtfile = gmtfile , pcfile = pcfile , bVerbose=bVerbose , bShallow = bShallow ,
                         test_type=test_type , significance_level = significance_level , alternative=alternative ) )
 
+
 def calculate_for_cluster_groups ( df:pd.DataFrame , label:str = None ,
                         gmtfile:str = None , pcfile:str = None , bVerbose:bool=True , bShallow:bool = False ,
                         test_type:str='hypergeometric' ,
                         significance_level:float = None , alternative:str='greater' ) -> dict :
-
     def recalculate_parent_depth( nidx , tree ) :
         path_info       = tree.search( root_id=nidx , linktype='ascendants', order='depth' )
         pathway         = path_info['path'][1:]
@@ -132,8 +132,7 @@ def calculate_for_cluster_groups ( df:pd.DataFrame , label:str = None ,
         tdf     = pd.DataFrame( [ 1.0 for v in all_indices] ,index=all_indices , columns=[idx] )
         tdf     .loc[ sigids ] = 0.001
 
-        #hdf = imph.HierarchicalEnrichment ( tdf , dag_df ,
-        hdf = HierarchicalEnrichment ( tdf , dag_df ,
+        hdf = imph.HierarchicalEnrichment ( tdf , dag_df ,
                 dag_level_label = 'DAG,level' , ancestors_id_label = 'DAG,ancestors' ,
                 threshold = 0.05 , p_label = idx , analyte_name_label = 'analytes' ,
                 item_delimiter = ',' , alexa_elim = False , alternative = alternative ,
