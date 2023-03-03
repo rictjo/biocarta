@@ -78,16 +78,17 @@ def create_specificity_group_df ( acdf:pd.DataFrame , df_:pd.DataFrame , index_o
 
 def calculate_fisher_for_cluster_groups ( df:pd.DataFrame , label:str = None ,
                         gmtfile:str = None , pcfile:str = None , bVerbose:bool=True , bShallow:bool = False ,
-                        test_type:str='fisher' ,
+                        test_type:str='fisher' , bUseAlexaElim:bool=False ,
                         significance_level:float = None , alternative:str='greater' ) -> dict :
     return( calculate_for_cluster_groups ( df=df , label = label ,
                         gmtfile = gmtfile , pcfile = pcfile , bVerbose=bVerbose , bShallow = bShallow ,
-                        test_type=test_type , significance_level = significance_level , alternative=alternative ) )
+                        test_type=test_type ,  bUseAlexaElim=bUseAlexaElim,
+                        significance_level = significance_level , alternative=alternative ) )
 
 
 def calculate_for_cluster_groups ( df:pd.DataFrame , label:str = None ,
                         gmtfile:str = None , pcfile:str = None , bVerbose:bool=True , bShallow:bool = False ,
-                        test_type:str='hypergeometric' ,
+                        test_type:str='hypergeometric' , bUseAlexaElim:bool=False,
                         significance_level:float = None , alternative:str='greater' ) -> dict :
     def recalculate_parent_depth( nidx , tree ) :
         path_info       = tree.search( root_id=nidx , linktype='ascendants', order='depth' )
@@ -135,7 +136,7 @@ def calculate_for_cluster_groups ( df:pd.DataFrame , label:str = None ,
         hdf = imph.HierarchicalEnrichment ( tdf , dag_df ,
                 dag_level_label = 'DAG,level' , ancestors_id_label = 'DAG,ancestors' ,
                 threshold = 0.05 , p_label = idx , analyte_name_label = 'analytes' ,
-                item_delimiter = ',' , alexa_elim = False , alternative = alternative ,
+                item_delimiter = ',' , alexa_elim = bUseAlexaElim , alternative = alternative ,
                 test_type = test_type
         )
         hdf = hdf.sort_values( by='Hierarchical,p' )
