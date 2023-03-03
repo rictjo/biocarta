@@ -77,9 +77,17 @@ def create_specificity_group_df ( acdf:pd.DataFrame , df_:pd.DataFrame , index_o
 
 
 def calculate_fisher_for_cluster_groups ( df:pd.DataFrame , label:str = None ,
-			gmtfile:str = None , pcfile:str = None ,
-                        bVerbose:bool = True , bShallow:bool = False ,
-			significance_level:float = None ) -> dict :
+                        gmtfile:str = None , pcfile:str = None , bVerbose:bool=True , bShallow:bool = False ,
+                        test_type:str='fisher' ,
+                        significance_level:float = None , alternative:str='greater' ) -> dict :
+    return( calculate_for_cluster_groups ( df=df , label = label ,
+                        gmtfile = gmtfile , pcfile = pcfile , bVerbose=bVerbose , bShallow = bShallow ,
+                        test_type=test_type , significance_level = significance_level , alternative=alternative ) )
+
+def calculate_for_cluster_groups ( df:pd.DataFrame , label:str = None ,
+                        gmtfile:str = None , pcfile:str = None , bVerbose:bool=True , bShallow:bool = False ,
+                        test_type:str='hypergeometric' ,
+                        significance_level:float = None , alternative:str='greater' ) -> dict :
 
     def recalculate_parent_depth( nidx , tree ) :
         path_info       = tree.search( root_id=nidx , linktype='ascendants', order='depth' )
@@ -97,11 +105,11 @@ def calculate_fisher_for_cluster_groups ( df:pd.DataFrame , label:str = None ,
                     if npath[ipath] in set(pathway[:-1]) :
                         n_depth = len(npath)-ipath
                         if n_depth>depth :
-                            parent	= npath[ipath]
+                            parent      = npath[ipath]
                             if bShallow :
-                                n_depth	= depth
+                                n_depth = depth
                             else :
-                                depth	= n_depth
+                                depth   = n_depth
                             break
         return ( parent, depth )
 
@@ -120,38 +128,40 @@ def calculate_fisher_for_cluster_groups ( df:pd.DataFrame , label:str = None ,
     adf = df.groupby( label ).apply(lambda x:'|'.join(x.index.values.tolist()))
     dag_maps = dict()
     for idx in adf.index :
-        sigids	= adf.loc[idx].replace('\n','').replace('\t','').split('|')
-        tdf	= pd.DataFrame( [ 1.0 for v in all_indices] ,index=all_indices , columns=[idx] )
-        tdf	.loc[ sigids ] = 0.001
+        sigids  = adf.loc[idx].replace('\n','').replace('\t','').split('|')
+        tdf     = pd.DataFrame( [ 1.0 for v in all_indices] ,index=all_indices , columns=[idx] )
+        tdf     .loc[ sigids ] = 0.001
 
-        hdf = imph.HierarchicalEnrichment ( tdf , dag_df ,
-		dag_level_label = 'DAG,level' , ancestors_id_label = 'DAG,ancestors' ,
-		threshold = 0.05 , p_label = idx , analyte_name_label = 'analytes' ,
-		item_delimiter = ',' , alexa_elim = False , alternative = 'two-sided'
+        #hdf = imph.HierarchicalEnrichment ( tdf , dag_df ,
+        hdf = HierarchicalEnrichment ( tdf , dag_df ,
+                dag_level_label = 'DAG,level' , ancestors_id_label = 'DAG,ancestors' ,
+                threshold = 0.05 , p_label = idx , analyte_name_label = 'analytes' ,
+                item_delimiter = ',' , alexa_elim = False , alternative = alternative ,
+                test_type = test_type
         )
         hdf = hdf.sort_values( by='Hierarchical,p' )
         lookup = { hi:len( [l for l in v.split(',') if len(l)>0] ) for v,hi in zip(hdf.loc[:,'Included analytes,ids'].values,hdf.index.values) }
         lookup[rootid] = len( sigids )
         if not significance_level is None :
             hdf = hdf.iloc[ hdf.loc[:,'Hierarchical,p'].values<=significance_level , : ]
-        names		= hdf.index.values
-        pvals		= hdf.loc[:,'Hierarchical,p'].values
-        ancestors	= hdf.loc[:,'DAG,ancestors'].values
-        parents		= []
+        names           = hdf.index.values
+        pvals           = hdf.loc[:,'Hierarchical,p'].values
+        ancestors       = hdf.loc[:,'DAG,ancestors'].values
+        parents         = []
         for name in names :
             rs = recalculate_parent_depth( name , tree )
             parents.append(rs[0])
         df_ = pd.DataFrame( [parents,pvals,hdf.loc[:,'description'].values,names] ).T
-        df_ .columns	= ['parent','p-value','description','name']
-        df_ .index	= df_.loc[:,'name'].values.tolist()
-        add_idxs 	= list ( set( df_.loc[:,'parent'].values.tolist() ) - set( df_.index.values.tolist() ) )
+        df_ .columns    = ['parent','p-value','description','name']
+        df_ .index      = df_.loc[:,'name'].values.tolist()
+        add_idxs        = list ( set( df_.loc[:,'parent'].values.tolist() ) - set( df_.index.values.tolist() ) )
         tddf = dag_df.loc[ add_idxs,['Hierarchical,p','description'] ].copy()
         tddf .loc[:,'parent'] = [ rootid if rootid!=i else "" for i in add_idxs ]
         tddf .loc[:,'name'] = add_idxs
         tddf = tddf.rename(columns={'Hierarchical,p':'p-value'})
         df_  = pd.concat( [df_,tddf] )
         df_ .loc[:,'N_intersect'] = [ lookup[id_] for id_ in df_.index.values]
-        dag_maps[ idx ]	= df_
+        dag_maps[ idx ] = df_
         if bVerbose :
             print ( df_ )
     """
