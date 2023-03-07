@@ -75,7 +75,6 @@ def create_specificity_group_df ( acdf:pd.DataFrame , df_:pd.DataFrame , index_o
             print ('SUCCESS!')
         return ( metric_df .loc[morder,:] , sgcdf.loc[idxs,:] )
 
-
 def calculate_fisher_for_cluster_groups ( df:pd.DataFrame , label:str = None ,
                         gmtfile:str = None , pcfile:str = None , bVerbose:bool=True , bShallow:bool = False ,
                         test_type:str='fisher' , bUseAlexaElim:bool=False ,
@@ -85,35 +84,11 @@ def calculate_fisher_for_cluster_groups ( df:pd.DataFrame , label:str = None ,
                         test_type=test_type ,  bUseAlexaElim=bUseAlexaElim,
                         significance_level = significance_level , alternative=alternative ) )
 
-
 def calculate_for_cluster_groups ( df:pd.DataFrame , label:str = None ,
                         gmtfile:str = None , pcfile:str = None , bVerbose:bool=True , bShallow:bool = False ,
-                        test_type:str='hypergeometric' , bUseAlexaElim:bool=False,
+                        test_type:str='hypergeometric' , bUseAlexaElim:bool=False , 
+                        bNoMasking:bool=False , bOnlyMaskSignificant:bool=False , 
                         significance_level:float = None , alternative:str='greater' ) -> dict :
-    def recalculate_parent_depth( nidx , tree ) :
-        path_info       = tree.search( root_id=nidx , linktype='ascendants', order='depth' )
-        pathway         = path_info['path'][1:]
-        parent          = pathway[-1]
-        depth           = -1
-        higher          = hdf.iloc[ hdf.loc[:,'DAG,level'].values < hdf.loc[ nidx , 'DAG,level' ] ].loc[:,'DAG,ancestors']
-        for jdx in higher.index :
-            what = set([ jdx, *higher.loc[jdx].split(',') ])
-            if len( what & set(pathway[:-1]) )>0  :
-                npath = tree.search(    root_id         = jdx ,
-                                        linktype        = 'ascendants' ,
-                                        order           = 'depth' )['path']
-                for ipath in range(len(npath)) :
-                    if npath[ipath] in set(pathway[:-1]) :
-                        n_depth = len(npath)-ipath
-                        if n_depth>depth :
-                            parent      = npath[ipath]
-                            if bShallow :
-                                n_depth = depth
-                            else :
-                                depth   = n_depth
-                            break
-        return ( parent, depth )
-
     if label is None :
         print ( "ERROR: YOU MUST SPECIFY A CLUSTER GROUPING LABEL" )
         exit ( 1 )
@@ -137,7 +112,7 @@ def calculate_for_cluster_groups ( df:pd.DataFrame , label:str = None ,
                 dag_level_label = 'DAG,level' , ancestors_id_label = 'DAG,ancestors' ,
                 threshold = 0.05 , p_label = idx , analyte_name_label = 'analytes' ,
                 item_delimiter = ',' , alexa_elim = bUseAlexaElim , alternative = alternative ,
-                test_type = test_type
+                test_type = test_type, bNoMasking=bNoMasking , bOnlyMarkSignificant=bOnlyMaskSignificant
         )
         hdf = hdf.sort_values( by='Hierarchical,p' )
         lookup = { hi:len( [l for l in v.split(',') if len(l)>0] ) for v,hi in zip(hdf.loc[:,'Included analytes,ids'].values,hdf.index.values) }
@@ -147,10 +122,7 @@ def calculate_for_cluster_groups ( df:pd.DataFrame , label:str = None ,
         names           = hdf.index.values
         pvals           = hdf.loc[:,'Hierarchical,p'].values
         ancestors       = hdf.loc[:,'DAG,ancestors'].values
-        parents         = []
-        for name in names :
-            rs = recalculate_parent_depth( name , tree )
-            parents.append(rs[0])
+        parents         = hdf.loc[:,'DAG,parents'].values
         df_ = pd.DataFrame( [parents,pvals,hdf.loc[:,'description'].values,names] ).T
         df_ .columns    = ['parent','p-value','description','name']
         df_ .index      = df_.loc[:,'name'].values.tolist()
