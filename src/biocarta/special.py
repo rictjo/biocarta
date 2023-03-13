@@ -14,6 +14,25 @@ import numpy as np
 import pandas as pd
 import umap
 
+def print_gmt_pc_file_format ( ) :
+    desc__ = [ '',
+	'A gmt file is a tab delimited file where each row is started by a group id'      ,
+        'afterwhich a description of the group constitutes the second field. Each field'  ,
+        'after the first two then corresponds to an analyte id so that the format, for each line,' ,
+        'can be understood in the following way:',
+	'GROUPDID TAB DESCRIPTION TAB ANALYTEID TAB ...MORE ANALYTE IDS... TAB ANALYTEID',
+        'or:' ,
+        'PROTF001\tTechnical words can be enlightening\tAID0001\tAID1310\tAID0135',
+        '',
+        'A pc file is a parent child list containing only a single parent and a single child',
+        'delimited by a tab on each line so that the format, for each line, can be understood ',
+        'in the following way :' ,
+        'PAREN_GROUP_ID TAB CHILD_GROUP_ID','or:',
+        'PROTF010\tPROTF001',
+        ''
+    ]
+    print ( '\n'.join(desc__) )
+
 def read_rds_distance_matrix ( filename = '../res1/distance/distances.rds' ) :
     import rpy2.robjects as robjects
     from rpy2.robjects import pandas2ri
