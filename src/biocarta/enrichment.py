@@ -150,3 +150,78 @@ def calculate_for_cluster_groups ( df:pd.DataFrame , label:str = None ,
     fig.show()
     """
     return ( dag_maps )
+
+#
+# GFA LIKE
+def from_multivariate_group_factors (	analyte_df:pd.DataFrame ,
+					journal_df:pd.DataFrame ,
+                                	label:str , gmtfile:str , pcfile:str = None ,
+					formula:str = None , block_formula:str = '' ,
+					bUnivariateInstanceProjected:bool = False , bVerbose:bool=False , bPassOnVerbosity:bool=False ,
+					control_group:str = None ) -> dict :
+    #
+    def use_formula ( formula:str=None, label:str=None ) -> str :
+        if formula is None :
+            formula = 'Group~'+'C(' + label + ')'
+        return ( formula )
+    #
+    if bVerbose and not formula is None :
+        print ( 'ANALYZING : ', formula )
+    #
+    journal_df_ = journal_df
+    calculate_pairs = [ ]
+    if bUnivariateInstanceProjected :
+        for instance_label in set(journal_df.loc[label].values) :
+            if 'str' in str(type(control_group)) :
+                if instance_label == control_group :
+                    continue
+                journal_df_.loc[instance_label] = [ instance_label if (v == instance_label) else ( control_group if (v==control_group)  else 'Other' ) for v in journal_df.loc[label].values ]
+                calculate_pairs .append( [instance_label , instance_label , control_group ] )
+            else :
+                journal_df_.loc[instance_label] = [ instance_label if v == instance_label else 'Other' for v in journal_df.loc[label].values ]
+                calculate_pairs .append( [instance_label , instance_label , None ] )
+    #
+    if  bUnivariateInstanceProjected or formula is None :
+        calculate_pairs = [ [label , None , None ] , *calculate_pairs ]
+        if bVerbose :
+            print ( 'CONDUCTING ANALYSIS FOR' , calculate_pairs , len(calculate_pairs) )
+    #
+    all_results = dict()
+    for instance_axis in calculate_pairs :
+        instance_label = instance_axis[0]
+        if bUnivariateInstanceProjected or formula is None :
+            if bVerbose :
+                print ( 'CALCULATING ENRICHMENT FOR' , instance_axis  )
+            mainContrasts	= journal_df_.loc[ label , : ]
+            bMainContrasts	= [ True for v in journal_df_.columns ]
+            if not (instance_axis[1] is None) :
+                mainContrasts	= [ v if v==instance_axis[1] else 'Other' for v in journal_df_.loc[instance_label].values ]
+            if not (instance_axis[2] is None) and not ( instance_axis[1] is None ) :
+                mainContrasts	= [ v for v in journal_df_.loc[instance_label].values if v==instance_axis[2] or v==instance_axis[1] ]
+                bMainContrasts	= [ v==instance_axis[2] or v==instance_axis[1] for v in journal_df_.loc[instance_label].values ]
+            jdf = journal_df_	.iloc [ : , bMainContrasts ]
+            jdf .loc[instance_label.replace(' ','_')]	=	mainContrasts
+            adf = analyte_df	 .loc [ : ,    jdf.columns ]
+            used_formula = use_formula( label=instance_label.replace(' ','_')  )
+        else :
+            adf = analyte_df
+            jdf = journal_df
+            used_formula = formula
+        #
+        used_formula = used_formula + block_formula
+        if bVerbose :
+            print ( 'USING THE FORMULA: ', used_formula )
+            print ( 'GROUP MODULATION OF THE VALUES: ',set( jdf.loc[instance_label].values ) )
+
+        if pcfile is None :
+            from impetuous.quantification	import groupFactorAnalysisEnrichment	as gFArEnr
+            results = gFArEnr ( analyte_df = adf , journal_df = jdf ,
+				formula = used_formula ,
+				grouping_file = gmtfile , bVerbose = bVerbose and bPassOnVerbosity )
+        else :
+            from impetuous.hierarchical	import groupFactorHierarchicalEnrichment	as gFAhEnr
+            results = gFAhEnr ( analyte_df = adf , journal_df = jdf ,
+				formula = used_formula ,
+				gmtfile = gmtfile , pcfile = pcfile , bVerbose = bVerbose and bPassOnVerbosity )
+        all_results = { **all_results , **{ instance_label : tuple( (results, used_formula) ) } }
+    return ( all_results )
