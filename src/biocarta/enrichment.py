@@ -186,6 +186,8 @@ def from_multivariate_group_factors (	analyte_df:pd.DataFrame ,
         if bVerbose :
             print ( 'CONDUCTING ANALYSIS FOR' , calculate_pairs , len(calculate_pairs) )
     #
+    from impetuous.quantification	import groupFactorAnalysisEnrichment	as gFArEnr
+    from impetuous.hierarchical	import groupFactorHierarchicalEnrichment	as gFAhEnr
     all_results = dict()
     for instance_axis in calculate_pairs :
         instance_label = instance_axis[0]
@@ -214,12 +216,10 @@ def from_multivariate_group_factors (	analyte_df:pd.DataFrame ,
             print ( 'GROUP MODULATION OF THE VALUES: ',set( jdf.loc[instance_label].values ) )
 
         if pcfile is None :
-            from impetuous.quantification	import groupFactorAnalysisEnrichment	as gFArEnr
             results = gFArEnr ( analyte_df = adf , journal_df = jdf ,
 				formula = used_formula ,
 				grouping_file = gmtfile , bVerbose = bVerbose and bPassOnVerbosity )
         else :
-            from impetuous.hierarchical	import groupFactorHierarchicalEnrichment	as gFAhEnr
             results = gFAhEnr ( analyte_df = adf , journal_df = jdf ,
 				formula = used_formula ,
 				gmtfile = gmtfile , pcfile = pcfile , bVerbose = bVerbose and bPassOnVerbosity )
