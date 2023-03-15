@@ -151,6 +151,45 @@ def calculate_for_cluster_groups ( df:pd.DataFrame , label:str = None ,
     """
     return ( dag_maps )
 
+
+def benchmark_group_expression_with_univariate_foldchange ( group_df:pd.DataFrame , journal_df:pd.DataFrame ,
+                        major_group_label:str = None , what_thing:str = None , bRanked:bool=False ,
+			nsamples:int = None, bVerbose:bool = False , bgname:str = 'Background' ,
+			clean_label = lambda x : x.replace(' ','_').replace('/','Or').replace('\\','').replace('-','') ) -> pd.DataFrame :
+
+    from biocarta.special import calculate_volcano_df
+
+    df		= group_df
+    if major_group_label is None :
+        print ( "WARNING CANNOT CONTINUE. NEED major_group_label" )
+        exit(1)
+    jdf		= journal_df.loc[ major_group_label , : ]
+    check_cols	= journal_df.columns.values.tolist()
+    if not what_thing is None :
+        lookup = { k:v for k,v in [ tuple( ( col , what_thing if clean_label(what_thing) in clean_label(label) else bgname )) for label,col in zip( jdf.values,jdf.index.values) ] }
+    else :
+        print ( "WARNING CANNOT CONTINUE. NEED what_thing" )
+        exit(1)
+    vals_df     = df.loc[:,check_cols].apply(pd.to_numeric).dropna(axis=1)
+    vals_df .loc['Regulation']  = [ lookup[c] for c in vals_df.columns.values ]
+    fc_levels  = list( set(vals_df .loc['Regulation'])-set([bgname]) )
+    fc_levels  .append( bgname )
+    if len ( fc_levels ) != 2 :
+        print ( "WARNING NOT WELL DEFINED TEST", fc_levels )
+        exit(1)
+    volcano_df = calculate_volcano_df ( vals_df , levels = fc_levels , what = 'Regulation' , bLog2 = True , bRanked = bRanked )
+    volcano_df .loc[:,'Hierarchical,q'] = df.loc[:,'Hierarchical,q'].values
+    volcano_df .loc[:,'-log10 hier-q' ] = -np.log10( volcano_df.loc[:,'Hierarchical,q'] )
+    volcano_df .loc[:,'description']    = df.loc[:,'description']
+    volcano_df .loc[:,'id']             = df.index.values
+    sig_level  = 1.0 / nsamples if not nsamples is None else 0.05
+    atmost_q   = sorted ( df.loc[:,'Hierarchical,q'].values )[nGroups]
+    if atmost_q < sig_level :
+        sig_level = atmost_q
+    if bVerbose :
+        print ( sig_level )
+    volcano_df .loc[:,'color']          = [ 'red' if v <=sig_level  else 'gray' for v in df.loc[:,'Hierarchical,q'].values ]
+    return ( volcano_df )
 #
 # GFA LIKE
 def from_multivariate_group_factors (	analyte_df:pd.DataFrame ,
