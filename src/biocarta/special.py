@@ -14,6 +14,24 @@ import numpy as np
 import pandas as pd
 import umap
 
+def calculate_volcano_df( vals_df:pd.DataFrame , levels:list[str] , what:str='Regulation' ,
+                                 bLog2:bool=False , bRanked:bool=False ) -> pd.DataFrame :
+    if bLog2 :
+        for idx in vals_df.index :
+            if not idx == what :
+                w = np.min(vals_df.loc[idx].values)
+                vals_df .loc[idx] = [ np.log2( 1 + ( v - w ) ) for v in vals_df.loc[idx].values ]
+    volcano_dict = single_fc_compare( vals_df , what = what , levels = levels ,
+                 bLogFC = False ,  # THIS SHOULD NEVER BE SET TRUE
+                 bRanked = bRanked )
+    clab = ', '.join( [ 'contrast' , 'mean diff' if not bLog2 else 'log2 FC' ] )
+    volcano_df = pd.DataFrame( [volcano_dict['statistic'][0] , volcano_dict['p-value'][0] , volcano_dict['contrast'][0] ] ,
+                     columns=volcano_dict['index'], index = ['statistic','p-value',clab] ).T
+    volcano_df.index .name = volcano_dict['comparison'][0]
+    volcano_df.loc[ :, '-log10 p-value' ] = -np.log10( volcano_df.loc[:,'p-value'].values )
+    return ( volcano_df )
+
+
 def print_gmt_pc_file_format ( ) :
     desc__ = [ '',
 	'A gmt file is a tab delimited file where each row is started by a group id'      ,
