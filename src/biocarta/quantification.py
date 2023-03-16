@@ -95,13 +95,13 @@ def create_mapping ( distm:np.array , cmd:str	= 'max'	,
 
 
 def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
-        bVerbose:bool = False , bExtreme:bool = True , n_clusters:list[int] = None ,
+        bVerbose:bool = True , bExtreme:bool = True , n_clusters:list[int] = None ,
         n_components:int = None , bUseUmap:bool = False , bPreCompute:bool=True ,
         distance_type:str  = 'covariation' , # 'correlation,spearman,absolute' ,
-        umap_dimension:int = 2 , umap_n_neighbors:int = 20 , umap_local_connectivity:float = 2. ,
+        umap_dimension:int = 2 , umap_n_neighbors:int = 20 , umap_local_connectivity:float = 1. ,
         umap_seed:int = 42 , hierarchy_cmd:str = 'max' , divergence = lambda r : np.exp(r) ,
         add_labels:list[str] = None , sample_label:str = None , alignment_label:str = None , bRemoveCurse:bool=False ,
-        n_projections:int = 2 , directory:str = None , bQN:int = None ,
+        n_projections:int = 2 , directory:str = './' , bQN:int = None ,
         nNeighborFilter:list[int] = None , heal_symmetry_break_method:str = 'average' ,
         epls_ownership:str = 'angle' , bNonEuclideanBackprojection:bool = False ,
         Sfunc = lambda x:np.mean(x,0) , bAddPies:bool=False ) -> tuple[pd.DataFrame] :
@@ -109,6 +109,9 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
     import biocarta.special as biox
     #
     if bVerbose :
+        print ( "TO DISABLE WRITING OF RESULTS TO", directory )
+        print ( "SET THE directory=None " )
+        print ( "TO MAKE BIOCARTA QUIET SET bVerbose=False" )
         import time
         header_str = 'YMDHMS_' + '_'.join( list( str(t) for t in time.gmtime())[:-3] )+'_'
         header_str = 'DMHMSY_' + time.ctime().replace(':','_').replace(' ','_') + '_'
@@ -141,7 +144,7 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
 			file = ofile )
     #
     adf = adf.iloc[ np.inf != np.abs( 1.0/np.std(adf.values,1) ) ,
-                    np.inf != np.abs( 1.0/np.std(adf.values,0) ) ].copy()
+                    np.inf != np.abs( 1.0/np.std(adf.values,0) ) ].copy().apply(pd.to_numeric)
     #
     comp_df = None
     if not jdf is None :
@@ -151,7 +154,8 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
             comp_df = biox.calculate_compositions ( adf , jdf, label = alignment_label , bAddPies=bAddPies )
             comp_df.columns = [ alignment_label +'.'+ c for c in comp_df.columns.values ]
             if bVerbose :
-                print (  'STORING RESULTS > ' , 'composition.tsv' )
+                print (  'FINISHED RESULTS > ' , 'composition.tsv' )
+            if not directory is None:
                 comp_df .to_csv (  header_str + 'composition.tsv' , sep='\t' )
     #
     if not bQN is None :
@@ -226,7 +230,8 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
                      bNonEuclideanBackprojection = bNonEuclideanBackprojection ,
                      Sfunc = Sfunc )
     if bVerbose :
-        print ( 'STORING RESULTS > ', 'resdf_f.tsv , soldf_f.tsv , hierarch_f.tsv' )
+        print ( 'FINISHED RESULTS > ', 'resdf_f.tsv , soldf_f.tsv , hierarch_f.tsv' )
+    if not directory is None:
         resdf_f .to_csv( header_str + 'resdf_f.tsv' , sep='\t' )
         soldf_f .to_csv( header_str + 'soldf_f.tsv' , sep='\t' )
         hierarch_f_df .to_csv( header_str + 'hierarch_f.tsv' , sep='\t' )
@@ -253,7 +258,8 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
                      Sfunc = Sfunc )
     #
     if bVerbose :
-        print ( 'STORING RESULTS > ', 'resdf_s.tsv , soldf_s.tsv , hierarch_s.tsv' )
+        print ( 'FINISHED RESULTS > ', 'resdf_s.tsv , soldf_s.tsv , hierarch_s.tsv' )
+    if not directory is None :
         resdf_s .to_csv( header_str + 'resdf_s.tsv',sep='\t' )
         soldf_s .to_csv( header_str + 'soldf_s.tsv',sep='\t' )
         hierarch_s_df.to_csv( header_str + 'hierarch_s.tsv' , sep='\t' )
@@ -279,7 +285,8 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
             res[0].columns = [ 'EPLS.' + v for v in res[0].columns.values ]
             res[1].columns = [ 'EPLS.' + v for v in res[1].columns.values ]
             if bVerbose :
-                print ( 'STORING RESULTS > ', 'pcas_df.tsv', 'pcaw_df.tsv', 'epls_f.tsv' , 'epls_s.tsv' )
+                print ( 'FINISHED RESULTS > ', 'pcas_df.tsv', 'pcaw_df.tsv', 'epls_f.tsv' , 'epls_s.tsv' )
+            if not directory is None:
                 pcas_df .to_csv ( header_str + 'pcas_df.tsv', sep='\t' )
                 pcaw_df .to_csv ( header_str + 'pcaw_df.tsv', sep='\t' )
                 res[ 0 ].to_csv ( header_str + 'epls_f.tsv' , sep='\t' )
