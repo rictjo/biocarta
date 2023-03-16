@@ -120,8 +120,7 @@ The clustering visualisations were created using the [Biocarta](https://pypi.org
 What groupings corresponds to biomarker variance that describe them? Here are two visualisations of that:
 
 Diseases :
-[cancers](https://rictjo.github.io/?https://gist.githubusercontent.com/rictjo/feaa14d3c83cb84ebc23b89662e0702c/raw/19032d8653e35f0be32212ea73ae57a69d50004c/index.html)
-
+[cancers](https://rictjo.github.io/?https://gist.githubusercontent.com/rictjo/feaa14d3c83cb84ebc23b89662e0702c/raw/19032d8653e35f0be32212ea73ae57a69d50004c/index.html) [biocarta gfa enrichment](https://rictjo.github.io/?https://gist.githubusercontent.com/rictjo/afcca63470e5c9398372276f9ab43d42/raw/6e68e1da85fdb6d1b1aeec8c351831a3aad83e9d/index.html)
 
 Tissues :
 [tissues](https://rictjo.github.io/?https://gist.githubusercontent.com/rictjo/5e760b8c4fd3da4842813a4a0cea422c/raw/caa18f0391dc389fb8fc56ae8ac2bc4f7046a939/index.html)
