@@ -120,10 +120,10 @@ The clustering visualisations were created using the [Biocarta](https://pypi.org
 What groupings corresponds to biomarker variance that describe them? Here are two visualisations of that:
 
 Diseases :
-[cancers](https://rictjo.github.io/?https://gist.githubusercontent.com/rictjo/feaa14d3c83cb84ebc23b89662e0702c/raw/19032d8653e35f0be32212ea73ae57a69d50004c/index.html) [biocarta gfa enrichment](https://rictjo.github.io/?https://gist.githubusercontent.com/rictjo/afcca63470e5c9398372276f9ab43d42/raw/6e68e1da85fdb6d1b1aeec8c351831a3aad83e9d/index.html)
+[cancers](https://rictjo.github.io/?https://gist.githubusercontent.com/rictjo/870d8cc26ede12d00b7ae60109feebdc/raw/42beb98a82477e9c809f99d3498966fc564846b8/index.html) [biocarta gfa enrichment](https://rictjo.github.io/?https://gist.githubusercontent.com/rictjo/afcca63470e5c9398372276f9ab43d42/raw/6e68e1da85fdb6d1b1aeec8c351831a3aad83e9d/index.html) [biocarta treemap cluster 61](https://rictjo.github.io/?https://gist.githubusercontent.com/rictjo/146ba66109c6554684dc387348d21a82/raw/a32f1e7c80cc6ebe53c33039e2adfb4512e3ce4b/index.html)
 
 Tissues :
 [tissues](https://rictjo.github.io/?https://gist.githubusercontent.com/rictjo/5e760b8c4fd3da4842813a4a0cea422c/raw/caa18f0391dc389fb8fc56ae8ac2bc4f7046a939/index.html)
 
 Single Cells:
-[single cells](https://rictjo.github.io/?https://gist.githubusercontent.com/rictjo/667388722f1934cb1613805b6cc9d7c6/raw/19e8bf667fdea2ed5fe2ebec35034a69cbbfdde5/index.html)
+[single cells](https://rictjo.github.io/?https://gist.githubusercontent.com/rictjo/eb118f70c1d173f2e6d51f06779827d2/raw/c7fd997caf232df3d6bbbd80d607463812d461a1/index.html) [biocarta gfa enrichment](https://rictjo.github.io/?https://gist.githubusercontent.com/rictjo/64ee6e4d2bacb31715ec46b65c9d441d/raw/a5d91114cc4ab784f865277264efe5f628ea018e/index.html) [biocarta treemap cluster 47](https://rictjo.github.io/?https://gist.githubusercontent.com/rictjo/34b320ea503b79e29808b063a7266714/raw/eaf39e740eb8baaadf0d08faab521a152c282009/index.html)
