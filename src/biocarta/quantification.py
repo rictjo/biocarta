@@ -232,6 +232,7 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
     if bVerbose :
         print ( 'FINISHED RESULTS > ', 'resdf_f.tsv , soldf_f.tsv , hierarch_f.tsv' )
     if not directory is None:
+        resdf_f .index.name = header_str
         resdf_f .to_csv( header_str + 'resdf_f.tsv' , sep='\t' )
         soldf_f .to_csv( header_str + 'soldf_f.tsv' , sep='\t' )
         hierarch_f_df .to_csv( header_str + 'hierarch_f.tsv' , sep='\t' )
