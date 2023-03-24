@@ -123,3 +123,80 @@ def calculate_compositions( adf:pd.DataFrame , jdf:pd.DataFrame , label:str, bAd
 def pivot_data ( mdf:pd.DataFrame , index:str ='index' , column:str = 'sample', values:str = 'value' ) -> pd.DataFrame :
     pdf = mdf.pivot( index = index , columns = [column] , values = values )
     return ( pdf )
+import pandas as pd
+import numpy  as np
+
+
+def reformat_results_to_gmtfile_pcfile (	header_str:str          = '../results/DMHMSY_Fri_Mar_17_14_37_07_2023_' ,
+						hierarchy_file:str	= 'resdf_f.tsv' ,
+						hierarchy_id:str	= 'cids.user.'  ,
+						axis:int = 0, order:str = 'descending'  ,
+						hierarchy_level_label:str = 'HCLN' ) -> tuple[list] :
+    #
+    df = pd.read_csv( header_str+hierarchy_file , sep='\t' , index_col=0 )
+    if axis == 1 :
+        df = df.T
+    df = df.loc[:,[c for c in df.columns if hierarchy_id in c]].apply(pd.to_numeric)
+    cvs = sorted([ v[::-1] for v in np.max( df,0 ).items() ] )
+    if cvs[0][0] >= cvs[-1][0] :
+        print ( 'WARNING: UNUSABLE ORDER' )
+    if len(cvs) < 2 :
+        print ( 'WARNING: TO FEW HIERARCHY LEVELS' )
+    cnvs = [ c[1] for c in cvs ]
+    df   = df.loc[ : , cnvs ]
+    #
+    # BUILD THE LIST
+    pcl = list()
+    I,N = 0,len(cnvs)
+    GMTS = list()
+    for p_c , c_c in zip(cnvs[:-1],cnvs[1:]) :
+        I += 1
+        dft = df.loc[ :, [p_c,c_c] ]
+        dft.columns = [ c.replace(hierarchy_id,hierarchy_level_label) for c in dft.columns ]
+        cols = dft.columns.values
+        nvals = []
+        for vals in dft.loc[ :, cols ].values :
+            if I == 1 :
+                pcl.append( tuple( ( 0 , hierarchy_level_label+'0-ROOT' , cols[0]+'-c'+str(vals[0])) )  )
+
+            pcl.append( tuple( ( I , cols[0]+'-c'+str(vals[0]),cols[1]+'-c'+str(vals[1])) )  )
+            nvals.append ( pcl[-1][1:] )
+        #
+        dft .loc[:,cols] = nvals
+        gmt_df = dft.loc[ : , [cols[0]] ].groupby( cols[0] ).apply(lambda x:'\t'.join( [ str(w) for w in x.index]))
+        for idx in gmt_df.index :
+            GMTS .append ( '\t'.join( [idx,'clusters belonging to ' + str( p_c ) ,gmt_df.loc[idx]] ) )
+        if I==N :
+            gmt_df = dft.loc[ : , [cols[1]] ].groupby( cols[1] ).apply(lambda x:'\t'.join( [ str(w) for w in x.index]))
+    PCL = sorted ( list( set(pcl) ) )
+    return ( GMTS, PCL )
+
+
+def reformat_results_and_print_gmtfile_pcfile ( header_str:str          = '../results/DMHMSY_Fri_Mar_17_14_37_07_2023_' ,
+						hierarchy_file:str      = 'resdf_f.tsv' ,
+                                                hierarchy_id:str        = 'cids.user.' ,
+                                                axis:int = 0, order:str = 'descending' ,
+                                                hierarchy_level_label:str = 'HCLN' ) -> None :
+    GMTS,PCL = reformat_results_to_gmtfile_pcfile (	hierarchy_file		=  hierarchy_file ,
+                                                	header_str		=  header_str ,
+                                                	hierarchy_id		=  hierarchy_id ,
+                                                	axis			=  axis ,
+							order			=  order ,
+                                                	hierarchy_level_label	=  hierarchy_level_label )
+
+    gmt_of	= open ( header_str + hierarchy_file.split('.')[0] + '_gmts.gmt' , 'w' )
+    for g in GMTS :
+        print ( g, file = gmt_of)
+    gmt_of.close()
+
+    pc_of	= open ( header_str + hierarchy_file.split('.')[0] + '_pcfile.txt' , 'w' )
+    print ( "parent\tchild" , file = pc_of )
+    for g in PCL :
+        print ( g[1]+'\t'+g[2], file = pc_of)
+    pc_of.close()
+
+if __name__ == '__main__':
+    reformat_results_and_print_gmtfile_pcfile(header_str = '../results/DMHMSY_Fri_Mar_17_14_37_07_2023_' )
+    reformat_results_and_print_gmtfile_pcfile(header_str = '../results/DMHMSY_Fri_Mar_17_16_00_47_2023_' )
+
+
