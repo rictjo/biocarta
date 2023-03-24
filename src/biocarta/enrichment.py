@@ -10,7 +10,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-
 import pandas as pd
 import numpy  as np
 
@@ -87,7 +86,8 @@ def calculate_fisher_for_cluster_groups ( df:pd.DataFrame , label:str = None ,
 def calculate_for_cluster_groups ( df:pd.DataFrame , label:str = None ,
                         gmtfile:str = None , pcfile:str = None , bVerbose:bool=True , bShallow:bool = False ,
                         test_type:str='hypergeometric' , bUseAlexaElim:bool=False , 
-                        bNoMasking:bool=False , bOnlyMaskSignificant:bool=False , 
+                        bNoMasking:bool=False , bOnlyMaskSignificant:bool=False , item_sep:str='\t' ,
+                        group_identifier:str = 'R-HSA' ,
                         significance_level:float = None , alternative:str='greater' ) -> dict :
     if label is None :
         print ( "ERROR: YOU MUST SPECIFY A CLUSTER GROUPING LABEL" )
@@ -99,7 +99,7 @@ def calculate_for_cluster_groups ( df:pd.DataFrame , label:str = None ,
 
     from impetuous.special import unpack
     import impetuous.hierarchical as imph
-    dag_df , tree = imph .create_dag_representation_df ( pathway_file = gmtfile , pcfile = pcfile )
+    dag_df , tree = imph .create_dag_representation_df ( pathway_file = gmtfile , pcfile = pcfile , identifier = group_identifier , item_sep = item_delimiter )
     rootid = tree.get_root_id()
     adf = df.groupby( label ).apply(lambda x:'|'.join(x.index.values.tolist()))
     dag_maps = dict()
@@ -194,7 +194,7 @@ def benchmark_group_expression_with_univariate_foldchange ( group_df:pd.DataFram
 # GFA LIKE
 def from_multivariate_group_factors (	analyte_df:pd.DataFrame ,
 					journal_df:pd.DataFrame ,
-                                	label:str , gmtfile:str , pcfile:str = None ,
+                                	label:str , gmtfile:str , pcfile:str = None , group_identifier:str='R-HSA' , item_delimiter:str='\t' ,
 					formula:str = None , block_formula:str = '' ,
 					bUnivariateInstanceProjected:bool = False , bVerbose:bool=False , bPassOnVerbosity:bool=False ,
 					control_group:str = None ) -> dict :
@@ -259,8 +259,11 @@ def from_multivariate_group_factors (	analyte_df:pd.DataFrame ,
 				formula = used_formula ,
 				grouping_file = gmtfile , bVerbose = bVerbose and bPassOnVerbosity )
         else :
+            import impetuous.hierarchical as imph
+            dag_df , tree = imph .create_dag_representation_df ( pathway_file = gmtfile , pcfile = pcfile ,
+                                                                 identifier = group_identifier , item_sep = item_delimiter )
             results = gFAhEnr ( analyte_df = adf , journal_df = jdf ,
-				formula = used_formula ,
-				gmtfile = gmtfile , pcfile = pcfile , bVerbose = bVerbose and bPassOnVerbosity )
+				formula = used_formula , dag_df = dag_df ,
+				bVerbose = bVerbose and bPassOnVerbosity )
         all_results = { **all_results , **{ instance_label : tuple( (results, used_formula) ) } }
     return ( all_results )
