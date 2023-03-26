@@ -123,53 +123,86 @@ def calculate_compositions( adf:pd.DataFrame , jdf:pd.DataFrame , label:str, bAd
 def pivot_data ( mdf:pd.DataFrame , index:str ='index' , column:str = 'sample', values:str = 'value' ) -> pd.DataFrame :
     pdf = mdf.pivot( index = index , columns = [column] , values = values )
     return ( pdf )
-import pandas as pd
-import numpy  as np
-
 
 def reformat_results_to_gmtfile_pcfile (	header_str:str          = '../results/DMHMSY_Fri_Mar_17_14_37_07_2023_' ,
 						hierarchy_file:str	= 'resdf_f.tsv' ,
 						hierarchy_id:str	= 'cids.user.'  ,
-						axis:int = 0, order:str = 'descending'  ,
-						hierarchy_level_label:str = 'HCLN' ) -> tuple[list] :
+						axis:int = 0, order:str = 'descending'  , bRedundant:bool=False ,
+						hierarchy_level_label:str = 'HCLN' , bErrorCheck:bool = False ) -> tuple[list] :
     #
     df = pd.read_csv( header_str+hierarchy_file , sep='\t' , index_col=0 )
     if axis == 1 :
         df = df.T
     df = df.loc[:,[c for c in df.columns if hierarchy_id in c]].apply(pd.to_numeric)
+    df.loc[:,hierarchy_id+'0'] = 1 # ROOT
+    #
+    # exit(1)
     cvs = sorted([ v[::-1] for v in np.max( df,0 ).items() ] )
     if cvs[0][0] >= cvs[-1][0] :
         print ( 'WARNING: UNUSABLE ORDER' )
     if len(cvs) < 2 :
-        print ( 'WARNING: TO FEW HIERARCHY LEVELS' )
+        print ( 'WARNING: TO FEW LEVELS HIERARCHY LEVELS' )
     cnvs = [ c[1] for c in cvs ]
     df   = df.loc[ : , cnvs ]
     #
     # BUILD THE LIST
     pcl = list()
-    I,N = 0,len(cnvs)
+    I,N = 0 , len(cnvs)
     GMTS = list()
+    GMTD = dict()
     for p_c , c_c in zip(cnvs[:-1],cnvs[1:]) :
         I += 1
         dft = df.loc[ :, [p_c,c_c] ]
-        dft.columns = [ c.replace(hierarchy_id,hierarchy_level_label) for c in dft.columns ]
-        cols = dft.columns.values
+        dft .columns = [ c.replace(hierarchy_id,hierarchy_level_label) for c in dft.columns ]
+        cols  = dft.columns.values
         nvals = []
         for vals in dft.loc[ :, cols ].values :
-            if I == 1 :
-                pcl.append( tuple( ( 0 , hierarchy_level_label+'0-ROOT' , cols[0]+'-c'+str(vals[0])) )  )
-
-            pcl.append( tuple( ( I , cols[0]+'-c'+str(vals[0]),cols[1]+'-c'+str(vals[1])) )  )
-            nvals.append ( pcl[-1][1:] )
-        #
+            pcl .append( tuple( ( I , cols[0]+'-c'+str(vals[0]),cols[1]+'-c'+str(vals[1])) )  )
+            nvals .append ( pcl[-1][1:] )
         dft .loc[:,cols] = nvals
-        gmt_df = dft.loc[ : , [cols[0]] ].groupby( cols[0] ).apply(lambda x:'\t'.join( [ str(w) for w in x.index]))
-        for idx in gmt_df.index :
-            GMTS .append ( '\t'.join( [idx,'clusters belonging to ' + str( p_c ) ,gmt_df.loc[idx]] ) )
-        if I==N :
-            gmt_df = dft.loc[ : , [cols[1]] ].groupby( cols[1] ).apply(lambda x:'\t'.join( [ str(w) for w in x.index]))
+        gmt_df = dft.loc[ : , [cols[1]] ].groupby( cols[1] ).apply(lambda x:'\t'.join( [ str(w) for w in x.index]))
+        for idx in gmt_df .index :
+            GMTS .append ( '\t'.join( [idx,'clusters belonging to ' + str( c_c ) ,gmt_df.loc[idx]] ) )
+            GMTD[idx] = set(gmt_df.loc[idx].split('\t'))
     PCL = sorted ( list( set(pcl) ) )
+    if bRedundant :
+        return ( GMTS, PCL )
+
+    PCD = { p:c for n,p,c in PCL }
+    if bErrorCheck:
+        from collections import Counter
+        v1 = [ g.split('\t')[0] for g in GMTS ]
+        v2 = [ p for p in  unpack([p[1:] for p in PCL])  ]
+        print ( Counter(v1) )
+        s1 = set(v1)
+        s2 = set(v2)
+        print ( s1-s2 )
+        print ( s2-s1 )
+        exit(1)
+
+    redundant = set([])
+    for pc in PCL :
+        if pc[1] in redundant:
+            continue
+        if pc[1] in GMTD and pc[2] in GMTD :
+            if GMTD[ pc[1] ] == GMTD[ pc[2] ]  :
+                if pc[2] in PCD :
+                    PCD[ pc[1] ] = PCD[ pc[2] ]
+                    del PCD[ pc[2] ]
+                else :
+                    del PCD[ pc[1] ]
+                del GMTD[ pc[2] ]
+                redundant = redundant|set([pc[2]])
+    GMTS = []
+    relevant_set = {  v for v in unpack( [[item[0],item[1]] for item in PCD.items()] ) }
+    for item in GMTD.items():
+        if item[0] in relevant_set :
+            GMTS.append( '\t'.join([ item[0],'TEXT', *list(item[1]) ]) )
+    PCL = []
+    for item in  PCD.items() :
+        PCL.append([ -1, item[0] , item[1] ])
     return ( GMTS, PCL )
+
 
 
 def reformat_results_and_print_gmtfile_pcfile ( header_str:str          = '../results/DMHMSY_Fri_Mar_17_14_37_07_2023_' ,
