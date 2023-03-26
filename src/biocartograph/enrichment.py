@@ -86,7 +86,7 @@ def calculate_fisher_for_cluster_groups ( df:pd.DataFrame , label:str = None ,
 def calculate_for_cluster_groups ( df:pd.DataFrame , label:str = None ,
                         gmtfile:str = None , pcfile:str = None , bVerbose:bool=True , bShallow:bool = False ,
                         test_type:str='hypergeometric' , bUseAlexaElim:bool=False , 
-                        bNoMasking:bool=False , bOnlyMaskSignificant:bool=False , item_sep:str='\t' ,
+                        bNoMasking:bool=False , bOnlyMaskSignificant:bool=False , item_sep:str=',' ,
                         group_identifier:str = 'R-HSA' ,
                         significance_level:float = None , alternative:str='greater' ) -> dict :
     if label is None :
@@ -99,7 +99,7 @@ def calculate_for_cluster_groups ( df:pd.DataFrame , label:str = None ,
 
     from impetuous.special import unpack
     import impetuous.hierarchical as imph
-    dag_df , tree = imph .create_dag_representation_df ( pathway_file = gmtfile , pcfile = pcfile , identifier = group_identifier , item_sep = item_delimiter )
+    dag_df , tree = imph .create_dag_representation_df ( pathway_file = gmtfile , pcfile = pcfile , identifier = group_identifier , item_sep = item_sep )
     rootid = tree.get_root_id()
     adf = df.groupby( label ).apply(lambda x:'|'.join(x.index.values.tolist()))
     dag_maps = dict()
@@ -111,11 +111,11 @@ def calculate_for_cluster_groups ( df:pd.DataFrame , label:str = None ,
         hdf = imph.HierarchicalEnrichment ( tdf , dag_df ,
                 dag_level_label = 'DAG,level' , ancestors_id_label = 'DAG,ancestors' ,
                 threshold = 0.05 , p_label = idx , analyte_name_label = 'analytes' ,
-                item_delimiter = ',' , alexa_elim = bUseAlexaElim , alternative = alternative ,
+                item_delimiter = item_sep , alexa_elim = bUseAlexaElim , alternative = alternative ,
                 test_type = test_type, bNoMasking=bNoMasking , bOnlyMarkSignificant=bOnlyMaskSignificant
         )
         hdf = hdf.sort_values( by='Hierarchical,p' )
-        lookup = { hi:len( [l for l in v.split(',') if len(l)>0] ) for v,hi in zip(hdf.loc[:,'Included analytes,ids'].values,hdf.index.values) }
+        lookup = { hi:len( [l for l in v.split(item_sep) if len(l)>0] ) for v,hi in zip(hdf.loc[:,'Included analytes,ids'].values,hdf.index.values) }
         lookup[rootid] = len( sigids )
         if not significance_level is None :
             hdf = hdf.iloc[ hdf.loc[:,'Hierarchical,p'].values<=significance_level , : ]
@@ -194,7 +194,8 @@ def benchmark_group_expression_with_univariate_foldchange ( group_df:pd.DataFram
 # GFA LIKE
 def from_multivariate_group_factors (	analyte_df:pd.DataFrame ,
 					journal_df:pd.DataFrame ,
-                                	label:str , gmtfile:str , pcfile:str = None , group_identifier:str='R-HSA' , item_delimiter:str='\t' ,
+                                	label:str , gmtfile:str , pcfile:str = None ,
+                                        group_identifier:str='R-HSA' , item_delimiter:str=',' ,
 					formula:str = None , block_formula:str = '' ,
 					bUnivariateInstanceProjected:bool = False , bVerbose:bool=False , bPassOnVerbosity:bool=False ,
 					control_group:str = None ) -> dict :
