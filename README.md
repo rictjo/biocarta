@@ -1,4 +1,4 @@
-# Biocarta
+# Biocartograph
 Creating Cartographic Representations of Biological Data
 [![DOI](https://zenodo.org/badge/578172132.svg)](https://zenodo.org/badge/latestdoi/578172132)
 
