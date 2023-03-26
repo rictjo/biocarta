@@ -157,7 +157,7 @@ def benchmark_group_expression_with_univariate_foldchange ( group_df:pd.DataFram
 			nsamples:int = None, bVerbose:bool = False , bgname:str = 'Background' ,
 			clean_label = lambda x : x.replace(' ','_').replace('/','Or').replace('\\','').replace('-','') ) -> pd.DataFrame :
 
-    from biocarta.special import calculate_volcano_df
+    from biocartograph.special import calculate_volcano_df
 
     df		= group_df
     if major_group_label is None :
