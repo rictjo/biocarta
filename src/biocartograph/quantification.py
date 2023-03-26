@@ -106,7 +106,7 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
         epls_ownership:str = 'angle' , bNonEuclideanBackprojection:bool = False ,
         Sfunc = lambda x:np.mean(x,0) , bAddPies:bool=False ) -> tuple[pd.DataFrame] :
     #
-    import biocarta.special as biox
+    import biocartograph.special as biox
     #
     if bVerbose :
         print ( "TO DISABLE WRITING OF RESULTS TO", directory )
