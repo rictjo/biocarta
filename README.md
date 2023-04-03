@@ -135,6 +135,4 @@ Blood Cells:
 [biocartograph treemap cluster 2](https://rictjo.github.io/?https://gist.githubusercontent.com/rictjo/d754528cf594087e509fe44fa071c178/raw/a78a82066e3d6aa2971aba2a64543a4018241372/index.html)
 
 [TCGA-BRCA](https://gdc.cancer.gov/) :
-Calculated using the biocartograph and a [TCGA derived data set](https://zenodo.org/record/3407557)
-
-[Breast Cancer Transcripts](https://rictjo.github.io/?https://gist.githubusercontent.com/rictjo/ea18ac756d5142ac98219d45960583d4/raw/7cba81abb8af89416d11a682a2e0d19a311c954f/index.html)
+Calculated using the biocartograph and a [TCGA derived data set](https://zenodo.org/record/3407557) with the results for [Breast Cancer mRNA-seq](https://rictjo.github.io/?https://gist.githubusercontent.com/rictjo/ea18ac756d5142ac98219d45960583d4/raw/7cba81abb8af89416d11a682a2e0d19a311c954f/index.html)
