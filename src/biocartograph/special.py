@@ -15,6 +15,7 @@ import pandas as pd
 import umap
 
 from impetuous.quantification import single_fc_compare
+from impetuous.special import unpack
 
 def calculate_volcano_df( vals_df:pd.DataFrame , levels:list[str] , what:str='Regulation' ,
                                  bLog2:bool=False , bRanked:bool=False ) -> pd.DataFrame :
