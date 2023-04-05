@@ -111,7 +111,7 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
     if bVerbose :
         print ( "TO DISABLE WRITING OF RESULTS TO", directory )
         print ( "SET THE directory=None " )
-        print ( "TO MAKE BIOCARTA QUIET SET bVerbose=False" )
+        print ( "TO MAKE BIOCARTOGRAPH QUIET SET bVerbose=False" )
         import time
         header_str = 'YMDHMS_' + '_'.join( list( str(t) for t in time.gmtime())[:-3] )+'_'
         header_str = 'DMHMSY_' + time.ctime().replace(':','_').replace(' ','_') + '_'
