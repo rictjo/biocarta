@@ -54,13 +54,13 @@ def print_gmt_pc_file_format ( ) :
     ]
     print ( '\n'.join(desc__) )
 
-def read_rds_distance_matrix ( filename = '../res1/distance/distances.rds' ) :
+def read_rds_distance_matrix ( filename:str ) -> np.array :
     import rpy2.robjects as robjects
     from rpy2.robjects import pandas2ri
     from scipy.spatial.distance import pdist,squareform
     pandas2ri.activate()
     readRDS = robjects.r['readRDS']
-    return ( squareform(readRDS ('../res1/distance/distances.rds') ) )
+    return ( squareform(readRDS (filename) ) )
 
 def inplace_norm ( x:pd.DataFrame , n:int=10 , random_state:int=42 , axis:int=0 ) -> pd.DataFrame :
     from sklearn.preprocessing import quantile_transform
@@ -124,6 +124,49 @@ def calculate_compositions( adf:pd.DataFrame , jdf:pd.DataFrame , label:str, bAd
 def pivot_data ( mdf:pd.DataFrame , index:str ='index' , column:str = 'sample', values:str = 'value' ) -> pd.DataFrame :
     pdf = mdf.pivot( index = index , columns = [column] , values = values )
     return ( pdf )
+
+def check_directory ( dir_string:str ,
+                      use_exclusion:str = 'pruned' ) -> list :
+    check_set  = {'tsv','csv','xlsx'}
+    if dir_string[-1] != '/':
+        dir_string += '/'
+    if not ( dir_string[0] == '~' or dir_string[0] == '/' ) :
+        print ( "INCLOMPLETE DIRECTORY" )
+    import os
+    contents = os.listdir(dir_string)
+    what = []
+    for thing in contents :
+        if 'str' in str(type(use_exclusion)):
+            if 'pruned' in thing :
+                continue
+        if thing.split('.')[-1] in check_set :
+            what.append( [dir_string+thing ,'\t' if '.tsv' in thing else ',' if '.csv' in thing else 'X' if '.xlsx' in thing else ' ' ] )
+    return ( what )
+
+def prune_dataframe( df:pd.DataFrame , indices:str , property_name:str , value_name:str ) -> pd.DataFrame :
+        from biocartograph.special import pivot_data
+        pdf = pivot_data( df, index = indices , column = property_name , values = value_name )
+        pdf = pdf.dropna( )
+        pdf = pdf.iloc[ np.inf != np.abs( 1.0/np.std(pdf.values,1) ) ,
+                        np.inf != np.abs( 1.0/np.std(pdf.values,0) ) ].copy().apply(pd.to_numeric)
+        pdf .loc[:,indices] = pdf.index
+        mdf = pdf.melt( id_vars = [indices] )
+        mdf = mdf.rename( columns = {'value':value_name} )
+        mdf = mdf.sort_values(by=[indices,property_name])
+        mdf .index = mdf.loc[:,indices]
+        mdf = mdf.loc[:,[property_name,value_name]]
+        return ( mdf )
+
+def create_file_lookup( files:list[str] ) -> dict :
+    file_lookup = dict()
+    for file in files :
+        with open(file[0],'r') as input :
+            for line in input :
+                columns = line.replace('\n','').split(file[1])
+                file_lookup[file[0]] = [ c for c in columns if len(c)>0 ]
+                break
+    return ( file_lookup )
+
 
 def reformat_results_to_gmtfile_pcfile (	header_str:str          = '../results/DMHMSY_Fri_Mar_17_14_37_07_2023_' ,
 						hierarchy_file:str	= 'resdf_f.tsv' ,
@@ -228,6 +271,68 @@ def reformat_results_and_print_gmtfile_pcfile ( header_str:str          = '../re
     for g in PCL :
         print ( g[1]+'\t'+g[2], file = pc_of)
     pc_of.close()
+
+def rescreen (  header_str:str          = "../results/DMHMSY_Wed_Apr__5_10_02_33_2023_" ,
+                full_solution:str       = "hierarch_f.tsv" ,
+                o_filename:str          = None ) -> pd.DataFrame :
+    #
+    filename            = header_str + full_solution
+    #
+    df = pd.read_csv( filename , sep='\t', index_col=0 )
+    df.index = range(len(df))
+    #
+    from collections import Counter
+    L = len( df )
+    full_result_dict = dict()
+    for i in range( L ) :
+        arow = df.iloc[i,:].values
+        for item in Counter( list( Counter( arow ).values() ) ).items() :
+            if item[0] in full_result_dict :
+                full_result_dict[ item[0] ] += item[1]
+            else :
+                full_result_dict[ item[0] ]  = item[1]
+        print ( 'DONE' , i , 'OF' , L, 'OR',i/L )
+    df_ = pd.DataFrame( full_result_dict.items() , columns=['k','v'] )
+    if not o_filename is None :
+        df_.to_csv( o_filename , sep='\t' )
+    return ( df_ )
+
+def contraction ( value:float , q:float , d:float ) -> float :
+    if value <= 0 :
+        return ( 0.0 )
+    r   = value / q # wasteful slob ...
+    r2  = r*r
+    r4  = r2*r2
+    r6  = r4*r2
+    r12 = r6*r6
+    p   = ( 1/r12 - 1/r6 ) * d * (-1)
+    p   = 1. + 1. * (p<0) + p * (p>=0)
+    return ( value / p ) # WARNING ONLY FOR WASTEFUL SAIGAS
+
+def contract ( a:np.array , d:float=None , q:float=None , quantile:float=0.05 ) -> np.array :
+    nm = np.shape(a)
+    b  = a.reshape(-1)
+    d_,q_ = d,q
+    if d is None :
+        d_ = 1.0/list(set(sorted( b )))[1]
+    if q is None :
+        q_ = np.quantile( b , q=quantile )
+    # THIS OPERATION IS SLOW
+    P  = np.array(list(map( lambda x:contraction(x , q=q_ , d=d_) , b ))).reshape(nm)
+    return ( P )
+
+
+def contract_df ( a:pd.DataFrame , d:float=None , q:float=None , quantile:float=0.05 ) -> pd.DataFrame :
+    nm = np.shape(a.values)
+    b  = a.values.reshape(-1)
+    d_,q_ = d,q
+    if d is None :
+        d_ = 1.0/list(set(sorted( b )))[1]
+    if q is None :
+        q_ = np.quantile( b , q=quantile )
+    # THIS OPERATION IS SLOWER
+    return ( a.apply( lambda x : pd.Series([contraction(x_ , q=q_ , d=d_ ) for x_ in x],name=x.name,index=x.index) )  )
+
 
 if __name__ == '__main__':
     reformat_results_and_print_gmtfile_pcfile(header_str = '../results/DMHMSY_Fri_Mar_17_14_37_07_2023_' )

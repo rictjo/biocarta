@@ -10,8 +10,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-import pandas as pd
-import numpy as np
+import pandas   as pd
+import numpy    as np
+import kmapper  as km # GENERAL TDA TOOLBOX
 import umap
 
 import impetuous.quantification as impq
@@ -32,7 +33,10 @@ def create_mapping ( distm:np.array , cmd:str	= 'max'	,
                      bNonEuclideanBackprojection:bool = False ,
                      n_proj:int			= 2	,
                      local_connectivity:float	= 20.	,
-                     Sfunc = lambda x:np.mean(x,0) ,
+                     Sfunc = lambda x:np.mean(x,0)	,
+                     bUseTDA:bool               = False ,
+                     contraction_quantile:float = None  ,
+                     contraction_depth:float    = None  ,
                      transform_seed:int = 42 ) -> tuple[pd.DataFrame] :
     #
     if MF is None :
@@ -48,14 +52,31 @@ def create_mapping ( distm:np.array , cmd:str	= 'max'	,
     else :
         Xf = MF
     #
-    Uf = pd.DataFrame( umap.UMAP( local_connectivity	= local_connectivity	,
+    if not contraction_quantile is None :
+        import biocartograph.special as biox
+        Xf = biox.contract( distm , quantile = contraction_quantile , d=contraction_depth )
+
+    col_label_prefix = 'UMAP.'
+    if bUseTDA :
+        from sklearn import ensemble , preprocessing, manifold
+        import kmapper as km
+        model   = ensemble.IsolationForest( random_state=1337 )
+        model   .fit( Xf )
+        lens1   = model.decision_function( Xf ) # FOR SHITS AND GIGGLES
+        P	= (lens1*Xf.T).T # FOR LENS1 ORDER TO BE CORRECT. SYMEMTRY => DOESN'T MATTER FOR P
+        print ( 'WARNING: THIS IS A HIGHLY DEVELOPMENTAL FEATURE. TDA => KMAP' )
+        mapper  = km.KeplerMapper( verbose=0 )
+        Uf      = pd.DataFrame( mapper.fit_transform( Xf , projection = [a for a in range(int(umap_dimension)) ] ) )
+        col_label_prefix = 'TDA.'
+    else :
+        Uf = pd.DataFrame( umap.UMAP( local_connectivity	= local_connectivity	,
                                   n_components		= int(umap_dimension)	,
                                   n_neighbors		= int(n_neighbors)	,
                                   transform_seed	= transform_seed	,
                                     ) .fit_transform( Xf ) )
-    resdf = pd.DataFrame( Uf )
-    resdf .index = index_labels
-    resdf .columns = ['UMAP.'+str(i) for i in range(umap_dimension)]
+    resdf		= pd.DataFrame( Uf )
+    resdf .index	= index_labels
+    resdf .columns	= [ col_label_prefix + str(i) for i in range(umap_dimension)]
     #
     if bUseUmap :
         distm = distance_calculation ( Uf , 'euclidean' ,
@@ -97,14 +118,16 @@ def create_mapping ( distm:np.array , cmd:str	= 'max'	,
 def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
         bVerbose:bool = True , bExtreme:bool = True , n_clusters:list[int] = None ,
         n_components:int = None , bUseUmap:bool = False , bPreCompute:bool=True ,
-        distance_type:str  = 'covariation' , # 'correlation,spearman,absolute' ,
-        umap_dimension:int = 2 , umap_n_neighbors:int = 20 , umap_local_connectivity:float = 1. ,
-        umap_seed:int = 42 , hierarchy_cmd:str = 'max' , divergence = lambda r : np.exp(r) ,
+        distance_type:str  = 'covariation' ,
+        umap_dimension:int = 2 , umap_n_neighbors:int = 20 , umap_local_connectivity:float = 20. ,
+        umap_seed:int = 42 , hierarchy_cmd:str = 'ward' , divergence = lambda r : np.exp(r) ,
         add_labels:list[str] = None , sample_label:str = None , alignment_label:str = None , bRemoveCurse:bool=False ,
         n_projections:int = 2 , directory:str = './' , bQN:int = None ,
         nNeighborFilter:list[int] = None , heal_symmetry_break_method:str = 'average' ,
         epls_ownership:str = 'angle' , bNonEuclideanBackprojection:bool = False ,
-        Sfunc = lambda x:np.mean(x,0) , bAddPies:bool=False ) -> tuple[pd.DataFrame] :
+        Sfunc = lambda x:np.mean(x,0) , bAddPies:bool=False , bUseTDA:bool = False ,
+        contraction_quantile:float = None   ,
+        contraction_depth:float    = None   ) -> tuple[pd.DataFrame] :
     #
     import biocartograph.special as biox
     #
@@ -132,7 +155,8 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
         'bRemoveCurse:bool':bRemoveCurse , 'n_projections:int':n_projections , 'directory:str':directory , 'bQN:int':bQN ,
         'nNeighborFilter:list[int]':nNeighborFilter , 'heal_symmetry_break_method:str':heal_symmetry_break_method ,
         'epls_ownership:str':epls_ownership , 'bNonEuclideanBackprojection:bool':bNonEuclideanBackprojection ,
-        'Sfunc':Sfunc , 'bAddPies:bool':bAddPies }
+        'Sfunc':Sfunc , 'bAddPies:bool':bAddPies , 'bUseTDA':bUseTDA ,
+	'contraction_quantile:float': contraction_quantile , ' contraction_depth:float': contraction_depth }
             ofile = open ( header_str + runinfo_file , 'w' )
             for item in run_dict.items():
                 if 'list' in str(type(item[1])):
@@ -228,7 +252,8 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
                      n_neighbors = n_neighbors , local_connectivity = local_connectivity ,
                      transform_seed = transform_seed, n_proj = n_projections ,
                      bNonEuclideanBackprojection = bNonEuclideanBackprojection ,
-                     Sfunc = Sfunc )
+                     Sfunc = Sfunc , bUseTDA = bUseTDA ,
+                     contraction_quantile = contraction_quantile , contraction_depth=contraction_depth )
     if bVerbose :
         print ( 'FINISHED RESULTS > ', 'resdf_f.tsv , soldf_f.tsv , hierarch_f.tsv' )
     if not directory is None:
@@ -256,7 +281,8 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
                      n_neighbors  = n_neighbors 	, local_connectivity = local_connectivity ,
                      transform_seed = transform_seed	, n_proj = n_projections ,
                      bNonEuclideanBackprojection = bNonEuclideanBackprojection ,
-                     Sfunc = Sfunc )
+                     Sfunc = Sfunc , bUseTDA = bUseTDA ,
+                     contraction_quantile = contraction_quantile , contraction_depth=contraction_depth )
     #
     if bVerbose :
         print ( 'FINISHED RESULTS > ', 'resdf_s.tsv , soldf_s.tsv , hierarch_s.tsv' )
