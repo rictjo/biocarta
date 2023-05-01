@@ -7,3 +7,4 @@ patsy==0.5.1
 impetuous-gfa==0.97.38
 rpy2==3.5.4
 umap-learn=0.5.3
+kmapper==2.0.1
