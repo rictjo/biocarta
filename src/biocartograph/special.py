@@ -306,7 +306,7 @@ def contraction ( value:float , q:float , d:float ) -> float :
     r6  = r4*r2
     r12 = r6*r6
     p   = ( 1/r12 - 1/r6 ) * d * (-1)
-    p   = 1. + 1. * (p<0) + p * (p>=0)
+    p   = 1. + 0. * (p<0) + p * (p>=0)
     return ( value / p ) # WARNING ONLY FOR WASTEFUL SAIGAS
 
 def contract ( a:np.array , d:float=None , q:float=None , quantile:float=0.05 ) -> np.array :
