@@ -62,7 +62,7 @@ def create_mapping ( distm:np.array , cmd:str	= 'max'	,
         import kmapper as km
         model   = ensemble.IsolationForest( random_state=1337 )
         model   .fit( Xf )
-        lens1   = model.decision_function( Xf ) # FOR SHITS AND GIGGLES
+        lens1   = model.decision_function( Xf )
         P	= (lens1*Xf.T).T # FOR LENS1 ORDER TO BE CORRECT. SYMEMTRY => DOESN'T MATTER FOR P
         print ( 'WARNING: THIS IS A HIGHLY DEVELOPMENTAL FEATURE. TDA => KMAP' )
         mapper  = km.KeplerMapper( verbose=0 )
@@ -126,6 +126,7 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
         nNeighborFilter:list[int] = None , heal_symmetry_break_method:str = 'average' ,
         epls_ownership:str = 'angle' , bNonEuclideanBackprojection:bool = False ,
         Sfunc = lambda x:np.mean(x,0) , bAddPies:bool=False , bUseTDA:bool = False ,
+        consensus_function = lambda x:np.sum(x) , consensus_labels:list[str] = None ,
         contraction_quantile:float = None   ,
         contraction_depth:float    = None   ) -> tuple[pd.DataFrame] :
     #
@@ -156,6 +157,7 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
         'nNeighborFilter:list[int]':nNeighborFilter , 'heal_symmetry_break_method:str':heal_symmetry_break_method ,
         'epls_ownership:str':epls_ownership , 'bNonEuclideanBackprojection:bool':bNonEuclideanBackprojection ,
         'Sfunc':Sfunc , 'bAddPies:bool':bAddPies , 'bUseTDA':bUseTDA ,
+        'consensus_function':consensus_function , 'consensus_labels:list[str]':consensus_labels ,
 	'contraction_quantile:float': contraction_quantile , ' contraction_depth:float': contraction_depth }
             ofile = open ( header_str + runinfo_file , 'w' )
             for item in run_dict.items():
@@ -167,8 +169,12 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
 			'\n'.join([ '\t=\t '.join([str(i) for i in item if not i is None]) for item in globals().items() if not item is None ] ),
 			file = ofile )
     #
+    if bVerbose:
+        print ( "BEGIN WARNINGS : ISSUED HERE MEANS THAT SOME ITEMS WITH ZERO STANDARD DEVIATION ARE DROPPED")
     adf = adf.iloc[ np.inf != np.abs( 1.0/np.std(adf.values,1) ) ,
                     np.inf != np.abs( 1.0/np.std(adf.values,0) ) ].copy().apply(pd.to_numeric)
+    if bVerbose:
+        print ( "END STD WARNINGS")
     #
     comp_df = None
     if not jdf is None :
@@ -215,6 +221,19 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
             MF_f = np.abs( MF_f )
         if 'absolute' in distance_type.split('secondary[')[0] :
             MF_s = np.abs( MF_s )
+    #
+    # CONSENSUS CONDENSATION IS NOT DONE FOR SAMPLE SPACE
+    # THIS WILL AFFECT THE UMAP NOT THE CLUSTERING DISTANCES IF
+    # NOT THE bUseUMAP IS SET TRUE
+    if not consensus_labels is None :
+        if 'list' in str(type(consensus_labels)) :
+            for label in consensus_labels :
+                if 'str' in str(type(label)) :
+                    if label in jdf.index :
+                        gdf = adf.T.groupby(jdf.loc[label]).apply( consensus_function ).T
+                        aux_vals = np.linalg.svd( zvals(gdf.values)['z'] , False )
+                        aux_vals = aux_vals[0]*aux_vals[1]
+                        MF_f = np.concatenate([MF_f.T,aux_vals.T]).T
     #
     if 'covariation' in distance_type or 'coexpression' in distance_type :
         input_values_f = MF_f

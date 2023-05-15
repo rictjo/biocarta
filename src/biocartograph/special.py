@@ -16,6 +16,9 @@ import umap
 
 from impetuous.quantification import single_fc_compare
 from impetuous.special import unpack
+from impetuous.quantification import spearmanrho , pearsonrho , tjornhammarrho, correlation_core
+
+clean_label = lambda x : x.replace(' ','_').replace('/','Or').replace('\\','').replace('-','')
 
 def calculate_volcano_df( vals_df:pd.DataFrame , levels:list[str] , what:str='Regulation' ,
                                  bLog2:bool=False , bRanked:bool=False ) -> pd.DataFrame :
@@ -178,9 +181,19 @@ def reformat_results_to_gmtfile_pcfile (	header_str:str          = '../results/D
     if axis == 1 :
         df = df.T
     df = df.loc[:,[c for c in df.columns if hierarchy_id in c]].apply(pd.to_numeric)
+    nm = np.shape(df)
+    bCreatePC = nm[1]>1
+    if not bCreatePC :
+        print ( 'NOT ENOUGH LABELS FOR CONSTRUCTING A HIERARCHY' )
+        print ( 'SINGLE LABELING SUPPLIED : ' , hierarchy_id )
+        print ( 'FLAT GMT FOR CLUSTERS WILL BE CONSTRUCTED' )
+        gmtdf = df.groupby(hierarchy_id).apply(lambda x:x.index.values.tolist())
+        GMTS = list()
+        for name,entry in zip(gmtdf.index,gmtdf.values) :
+            GMTS.append(  hierarchy_level_label + '-' + 'cluster id ' + str(name) + '\t' + str(name) + '\t' + '\t'.join(entry)  )
+        return ( GMTS , None )
     df.loc[:,hierarchy_id+'0'] = 1 # ROOT
     #
-    # exit(1)
     cvs = sorted([ v[::-1] for v in np.max( df,0 ).items() ] )
     if cvs[0][0] >= cvs[-1][0] :
         print ( 'WARNING: UNUSABLE ORDER' )
@@ -248,29 +261,34 @@ def reformat_results_to_gmtfile_pcfile (	header_str:str          = '../results/D
     return ( GMTS, PCL )
 
 
-
 def reformat_results_and_print_gmtfile_pcfile ( header_str:str          = '../results/DMHMSY_Fri_Mar_17_14_37_07_2023_' ,
 						hierarchy_file:str      = 'resdf_f.tsv' ,
                                                 hierarchy_id:str        = 'cids.user.' ,
                                                 axis:int = 0, order:str = 'descending' ,
-                                                hierarchy_level_label:str = 'HCLN' ) -> None :
+                                                hierarchy_level_label:str = 'HCLN' ) -> list[str] :
     GMTS,PCL = reformat_results_to_gmtfile_pcfile (	hierarchy_file		=  hierarchy_file ,
                                                 	header_str		=  header_str ,
                                                 	hierarchy_id		=  hierarchy_id ,
                                                 	axis			=  axis ,
 							order			=  order ,
                                                 	hierarchy_level_label	=  hierarchy_level_label )
-
-    gmt_of	= open ( header_str + hierarchy_file.split('.')[0] + '_gmts.gmt' , 'w' )
+    gmtname,pcname = None,None
+    gmtname     = header_str + hierarchy_file.split('.')[0] + '_gmts.gmt'
+    gmt_of	= open ( gmtname , 'w' )
+    print ( 'WRITING TO:' , gmtname )
     for g in GMTS :
         print ( g, file = gmt_of)
     gmt_of.close()
 
-    pc_of	= open ( header_str + hierarchy_file.split('.')[0] + '_pcfile.txt' , 'w' )
-    print ( "parent\tchild" , file = pc_of )
-    for g in PCL :
-        print ( g[1]+'\t'+g[2], file = pc_of)
-    pc_of.close()
+    if not PCL is None :
+        pcname  = header_str + hierarchy_file.split('.')[0] + '_pcfile.txt'
+        print ( 'WRITING TO:' , pcname )
+        pc_of	= open ( pcname , 'w' )
+        print ( "parent\tchild" , file = pc_of )
+        for g in PCL :
+            print ( g[1]+'\t'+g[2], file = pc_of)
+        pc_of.close()
+    return( gmtname , pcname )
 
 def rescreen (  header_str:str          = "../results/DMHMSY_Wed_Apr__5_10_02_33_2023_" ,
                 full_solution:str       = "hierarch_f.tsv" ,
@@ -334,8 +352,215 @@ def contract_df ( a:pd.DataFrame , d:float=None , q:float=None , quantile:float=
     return ( a.apply( lambda x : pd.Series([contraction(x_ , q=q_ , d=d_ ) for x_ in x],name=x.name,index=x.index) )  )
 
 
+def generate_hulls ( df:pd.DataFrame , gid:str = 'cids.max' , hid:str='UMAP.' ,
+                     cid:str = None , xid:str = None ,
+                     incremental:bool=False, qhull_options:str = None , bPlottered:bool=False ) -> dict :
+    #
+    # CONSIDERING SWTICH FROM QHULL TO FASTER AND TOPOLOGICALLY
+    # BETTER ALTERNATIVE IN THE FUTURE
+    #
+    if cid is None :
+        cid = hid
+    selection = sorted( list( set([ c for c in df.columns if hid in c or c in gid ]) - set([gid]) ) )
+    selection .append(gid)
+    projection_crds = sorted( list( set([ c for c in df.columns if cid in c ])  ) )
+    if not xid is None :
+        selection = [ s for s in selection if not xid in s ]
+        projection_crds = [ s for s in projection_crds if not xid in s ]
+
+    df_used = df.loc[ :,selection ]
+    nm = np.shape(df_used.values)
+    if nm[-1] < 3 :
+        print ( 'WARNING: MUST HAVE AT LEAST 2D DATA AND A LABEL SPECIFIED' )
+        print ( '         IN A DATAFRAME SO THAT DIM(DF) = N,M WHERE M>=2 ' )
+        print ( '         WILL RETURN EMPTY SOLUTION' )
+    import scipy.spatial as scs
+    if bPlottered :
+        import matplotlib.pyplot as plt
+    hulled = df_used.groupby(gid).apply( lambda x: tuple(( df.loc[x.index,projection_crds].values.tolist() ,
+                         scs.ConvexHull(        [ v[:-1] for v in x.values.tolist() ] ,
+                                                incremental=incremental, qhull_options=qhull_options ) )) )
+    all_convex_hulls = {}
+    for J in range(len( hulled )) :
+        gid_nr		= hulled.index.values[J]
+        ahull		= hulled.iloc[J]
+        points		= np.array( ahull[0] )
+        convex_hull	= ahull[1]
+        if bPlottered :
+            plt .plot ( points[:,0],points[:,1],'o' )
+        hull_border  = [ [ *points[convex_hull.vertices,i], points[convex_hull.vertices[0],i] ] for i in range(len(projection_crds)) ]
+        convex_hull_center  = np.mean(points,0)
+        all_convex_hulls[ gid_nr ] = { 'area':convex_hull.area , 'center':convex_hull_center , 'border':hull_border,
+					'info' : 'scipy spatial ConvexHull : ' + qhull_options if not qhull_options is None else 'default settings' }
+        if bPlottered :
+            plt.plot ( hull_border[0] , hull_border[1] , 'r-')
+            plt.plot ( convex_hull_center[0] , convex_hull_center[1] , '*k' )
+    if bPlottered :
+        plt .show()
+    return ( all_convex_hulls )
+
+def traverse_hierarchical_dictionary ( di:dict ) :
+    item = di
+    if not item is None :
+        for k_ in item.keys() :
+            print ( k_ )
+            traverse_hierarchical_dictionary ( item[k_] )
+
+def generate_neighbor_distance_df ( df:pd.DataFrame , lab:str='PCA' , iex:int=-1 , nNN:int = 20 ) -> pd.DataFrame :
+    from scipy.stats import rankdata
+    df0 = df.loc[ : ,[c for c in df.columns if lab in c ] ]
+    if True :
+        output = []
+        spr = spearmanrho( df0.iloc[:,:iex],df0.iloc[:,:iex] )
+        dsp = 1 - spr
+        for i in range(len( df0 )) :
+            j    = df0.index.values
+            m    = j[i]
+            x    = dsp[i]
+            bSel = rankdata ( x , 'ordinal' ) - 1 < nNN
+            output = [ *output , *sorted( [tuple((d_,r_,m,n_)) for d_,r_,n_ in  zip(  x[bSel], spr[i][bSel] ,j[bSel] )] ) ]
+        return ( pd.DataFrame(output,columns=['cor_distance','cor','gene','neighbor_gene']).loc[:,['gene','neighbor_gene','cor_distance','cor']] )
+
+
+def generate_neighbor_distance_information(  df:pd.DataFrame , lab:str='PCA' , iex:int=-1 , nNN:int = 20 ,sep:str='\t' ) -> str :
+    # results/Clustering_results/brain_HPA23v4/distance/nearest_neighbors.tsv
+    nn_df = generate_neighbor_distance_df ( df=df , lab=lab , iex=iex , nNN=nNN )
+    file_info = sep.join([ str(c) for c in nn_df.columns.values.tolist() ]) + '\n'
+    for v in nn_df.values :
+        file_info += sep.join( [ str(w) for w in v ] ) + '\n'
+    return ( file_info )
+
+
+
+def cluster_center_information ( all_convex_hulls:dict , sep:str = '\t' ) -> str :
+    # results/Clustering_results/brain_HPA23v4/UMAP/cluster_centers.tsv
+    N           = len( list(all_convex_hulls.items())[0][1]['center'] )
+    crdn        = 'xyzuvwabcdefghijklmnopqrst'
+    file_info   = ""
+    if len( crdn ) < N :
+        print ( 'WARNING : THERE IS PROBABLY AN ERROR IN THE HULL CALCULATION ', N , len(crdn) )
+    #
+    file_info += sep.join( [ 'cluster' , *[ crdn[i] for i in range(N) ] ] ) + '\n'
+    for item in all_convex_hulls.items() :
+        file_info += str(item[0]) + sep + sep.join([str(v) for v in item[1]['center']] ) + '\n'
+    return ( file_info )
+
+
+
+def create_cluster_polygon_information ( all_convex_hulls:dict , sep:str = '\t' ) -> str :
+    # results/Clustering_results/brain_HPA23v4/UMAP/UMAP_polygons.tsv
+    DIM         = len( list(all_convex_hulls.items())[0][1]['center'] )
+    crdn        = 'xyzuvwabcdefghijklmnopqrst'.upper()
+    file_info   = ""
+    if len( crdn ) < DIM :
+        print ( 'WARNING : THERE IS PROBABLY AN ERROR IN THE HULL CALCULATION ', DIM , len(crdn) )
+    #
+    file_info += sep.join( [    'cluster' , 'sub_cluster' , 'landmass', 'sub_type' ,
+                                *[ crdn[i] for i in range(DIM) ] ,
+                                'L1' , 'L2' , 'polygon_id'] ) + '\n'
+    #
+    for item in all_convex_hulls.items() :
+        crds = item[1]['border']
+        M    = len(crds[0])
+        crds = np.array(crds).reshape(-1)
+        crds = [ [ crds[k*M+i] for k in range(DIM) ] for i in range(M) ]
+        for crd in crds :
+            file_info += sep.join([ str(item[0]) , '1' , '1' ,'primary' , *[str(c) for c in crd] , '1' , '1' ,   str(item[0])+'_1_1' ]) + '\n'
+    return ( file_info )
+
+def create_directory ( directory_path:str ) :
+    import os
+    drsp = directory_path.split('/')
+    for i in range( len(drsp) ) :
+        if drsp[i] == '.' or drsp[i] == '..' :
+            continue
+        if len(drsp[:i+1])>0 :
+            thisdir = '/'.join(drsp[:i+1])
+            l = set( os.listdir ( '/'.join(thisdir.split('/')[:-1]) ) )
+            if not thisdir.split('/')[-1] in l :
+                os.mkdir( thisdir )
+
+#
+def quick_check_solution(header_str:str = '../results/DMHMSY_Tue_May__2_10_57_05_2023_' ) :
+    file 	= header_str + 'soldf_f.tsv'
+    df		= pd.read_csv(file,sep='\t',index_col=0 )
+    print ( df.iloc[:,np.argmax(df.iloc[1,:].values)]   )
+
+
+def generate_atlas_files ( header_str:str ,
+                fcfile:str = 'clustering/final_consensus.tsv' ,
+		nnfile:str = 'distance/nearest_neighbors.tsv' ,
+                umfile:str = 'UMAP/UMAP.tsv' ,
+                ccfile:str = 'UMAP/cluster_centers.tsv' ,
+		pofile:str = 'UMAP/UMAP_polygons.tsv' , nNN:int=20 ,
+                additional_directories:list[str] = ['data','enrichment','evaluation','graph','PCA','UMAP',
+					'svg','svg/heatmap','svg/bubble','svg/treemap','html','html/clustering_DV']) :
+    #
+    # START ATLAS GEN
+    sep = '\t'
+    df_sol_     = pd.read_csv( header_str + 'resdf_f.tsv' , sep=sep , index_col=0 ) # SHOULD BE ASSERTED
+    df_pca_     = pd.read_csv( header_str + 'pcas_df.tsv' , sep=sep , index_col=0 ) # SHOULD BE ASSERTED
+    common_idx  = sorted( list( set( df_sol_.index.values ) & set( df_pca_.index.values )))
+    df_sol_     = df_sol_.loc[ common_idx,: ]
+    df_pca_     = df_pca_.loc[ common_idx,: ]
+    #
+    df		= df_sol_
+    minmax      = lambda x: np.array( [ np.min(x,0) , np.max(x,0) ] )
+    scale       = minmax ( df.loc[:,[c for c in df if 'UMAP.' in c ]].values )
+    dfs         = ( df .loc[:,[c for c in df if 'UMAP.' in c ]] - scale[0]) / (scale[1]-scale[0])
+    dfs.columns = [ str(c) + '.scaled' for c in dfs.columns ]
+    df          = pd.concat([df.T,dfs.T]).T
+    all_hulls   = generate_hulls( df , hid = '.scaled' ,
+                        bPlottered=False )
+    #
+    hdir_str = header_str
+    if hdir_str[-1] == '_' :
+        hdir_str =  hdir_str[:-1] + '/'
+    #
+    create_directory ( hdir_str + '/'.join( fcfile.split('/')[:-1]) )
+    final_consensus_df = df_sol_.loc[:,['cids.max']].rename(columns={'cids.max':'cluster'}).copy()
+    final_consensus_df .index.name = 'gene'
+    final_consensus_df .to_csv( hdir_str + fcfile, sep=sep )
+    #
+    create_directory ( hdir_str + '/'.join( umfile.split('/')[:-1]) )
+    udf = df.loc[:,[c for c in df.columns if 'UMAP' in c ] ]
+    udf .columns = [ c.replace('.','_') for c in udf.columns ]
+    udf .to_csv( hdir_str + umfile, sep=sep )
+    #
+    create_directory ( hdir_str + '/'.join( ccfile.split('/')[:-1]) )
+    ccinfo = cluster_center_information( all_hulls )
+    o_f = open( hdir_str + ccfile,'w')
+    print ( ccinfo , file=o_f )
+    o_f .close()
+    #
+    create_directory ( hdir_str + '/'.join( pofile.split('/')[:-1]) )
+    poinfo  = create_cluster_polygon_information( all_hulls )
+    o_f = open( hdir_str + pofile,'w')
+    print ( poinfo , file=o_f )
+    o_f .close()
+    #
+    create_directory ( hdir_str + '/'.join( nnfile.split('/')[:-1]) )
+    nninfo  = generate_neighbor_distance_information(  df_pca_ , lab = 'PCA' ,
+			 iex = -1 , nNN = nNN , sep = '\t' )
+    o_f = open( hdir_str + nnfile,'w')
+    print ( nninfo , file=o_f )
+    o_f .close()
+    for dir in additional_directories :
+        create_directory ( hdir_str + dir )
+
+
 if __name__ == '__main__':
+    #
     reformat_results_and_print_gmtfile_pcfile(header_str = '../results/DMHMSY_Fri_Mar_17_14_37_07_2023_' )
     reformat_results_and_print_gmtfile_pcfile(header_str = '../results/DMHMSY_Fri_Mar_17_16_00_47_2023_' )
-
-
+    #
+    results_dir = '../results/'
+    header_str  = results_dir + 'DMHMSY_Wed_May__3_11_48_58_2023_'
+    #
+    generate_atlas_files ( header_str = header_str )
+    """ ,
+                nnfile = 'distance/nearest_neighbors.tsv' ,
+                ccfile = 'UMAP/cluster_centers.tsv' ,
+                pofile = 'UMAP/UMAP_polygons.tsv' )
+    """
+    #
