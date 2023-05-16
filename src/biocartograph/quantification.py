@@ -170,11 +170,11 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
 			file = ofile )
     #
     if bVerbose:
-        print ( "BEGIN WARNINGS : ISSUED HERE MEANS THAT SOME ITEMS WITH ZERO STANDARD DEVIATION ARE DROPPED")
+        print ( "INFORMATION : \t WARNINGS ISSUED AFTER THIS MESSAGE MEANS THAT SOME ITEMS WITH ZERO STANDARD DEVIATION WERE DROPPED\nBEGIN")
     adf = adf.iloc[ np.inf != np.abs( 1.0/np.std(adf.values,1) ) ,
                     np.inf != np.abs( 1.0/np.std(adf.values,0) ) ].copy().apply(pd.to_numeric)
-    if bVerbose:
-        print ( "END STD WARNINGS")
+    if bVerbose :
+        print ( "END")
     #
     comp_df = None
     if not jdf is None :

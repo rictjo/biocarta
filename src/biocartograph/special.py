@@ -478,7 +478,10 @@ def create_directory ( directory_path:str ) :
             thisdir = '/'.join(drsp[:i+1])
             l = set( os.listdir ( '/'.join(thisdir.split('/')[:-1]) ) )
             if not thisdir.split('/')[-1] in l :
-                os.mkdir( thisdir )
+                try:
+                    os.mkdir( thisdir )
+                except:
+                    print ( "WOULD NOT CREATE DIRECTORY:",thisdir,"\n\t\t(WILL PRETEND IT EXISTS ANYWAY)")
 
 #
 def quick_check_solution(header_str:str = '../results/DMHMSY_Tue_May__2_10_57_05_2023_' ) :
@@ -492,14 +495,45 @@ def generate_atlas_files ( header_str:str ,
 		nnfile:str = 'distance/nearest_neighbors.tsv' ,
                 umfile:str = 'UMAP/UMAP.tsv' ,
                 ccfile:str = 'UMAP/cluster_centers.tsv' ,
-		pofile:str = 'UMAP/UMAP_polygons.tsv' , nNN:int=20 ,
+		pofile:str = 'UMAP/UMAP_polygons.tsv' ,
+                pcadir:str = 'PCA/',
+                evadir:str = 'evaluation/',
+                nNN:int=20 ,
                 additional_directories:list[str] = ['data','enrichment','evaluation','graph','PCA','UMAP',
-					'svg','svg/heatmap','svg/bubble','svg/treemap','html','html/clustering_DV']) :
+					'svg'  , 'svg/heatmap','svg/bubble','svg/treemap','svg/fountain',
+                                        'html' , 'html']) :
     #
     # START ATLAS GEN
     sep = '\t'
+    #
+    hdir_str = header_str
+    if hdir_str[-1] == '_' :
+        hdir_str =  hdir_str[:-1] + '/'
+    #
     df_sol_     = pd.read_csv( header_str + 'resdf_f.tsv' , sep=sep , index_col=0 ) # SHOULD BE ASSERTED
     df_pca_     = pd.read_csv( header_str + 'pcas_df.tsv' , sep=sep , index_col=0 ) # SHOULD BE ASSERTED
+    df_pca_s    = pd.read_csv( header_str + 'pcaw_df.tsv' , sep=sep , index_col=0 ) # SHOULD BE ASSERTED
+    if 'str' in str(type(pcadir)) :
+        if pcadir[-1] != '/' :
+            pcadir += '/'
+        create_directory ( hdir_str + pcadir )
+        df_pca_ .to_csv( hdir_str + pcadir + 'pca_analytes_df.tsv' )
+        df_pca_s.to_csv( hdir_str + pcadir +  'pca_samples_df.tsv' )
+    #
+    if 'str' in str(type(evadir)) :
+        if evadir[-1] != '/' :
+            evadir += '/'
+        create_directory ( hdir_str + evadir )
+        e1df = pd.read_csv( header_str + 'soldf_f.tsv' , sep=sep , index_col=0 )
+        e1df .to_csv( hdir_str + evadir + 'solution_analytes.tsv' ,sep=sep )
+        del e1df
+        e2df = pd.read_csv( header_str + 'soldf_s.tsv' , sep=sep , index_col=0 )
+        e2df .to_csv( hdir_str + evadir + 'solution_samples.tsv' , sep=sep )
+        del e2df
+        c1df = pd.read_csv( header_str + 'composition.tsv'  , sep=sep , index_col=0 )
+        c1df .to_csv( hdir_str + evadir + 'composition.tsv' , sep=sep )
+        del c1df
+    #
     common_idx  = sorted( list( set( df_sol_.index.values ) & set( df_pca_.index.values )))
     df_sol_     = df_sol_.loc[ common_idx,: ]
     df_pca_     = df_pca_.loc[ common_idx,: ]
@@ -512,10 +546,6 @@ def generate_atlas_files ( header_str:str ,
     df          = pd.concat([df.T,dfs.T]).T
     all_hulls   = generate_hulls( df , hid = '.scaled' ,
                         bPlottered=False )
-    #
-    hdir_str = header_str
-    if hdir_str[-1] == '_' :
-        hdir_str =  hdir_str[:-1] + '/'
     #
     create_directory ( hdir_str + '/'.join( fcfile.split('/')[:-1]) )
     final_consensus_df = df_sol_.loc[:,['cids.max']].rename(columns={'cids.max':'cluster'}).copy()
@@ -547,6 +577,15 @@ def generate_atlas_files ( header_str:str ,
     o_f .close()
     for dir in additional_directories :
         create_directory ( hdir_str + dir )
+    #
+    # CHECK FOR ENRICHMENTS
+    hdr_dir   = '/'.join( header_str.split('/')[:-1] )
+    id_tag    = header_str.split('/')[-1]
+    import os
+    enr_files = [ l for l in set(os.listdir(hdr_dir)) if id_tag in l and ('treemap' in l or 'GFA' in l or 'enrichment' in l ) ]
+    if len(enr_files) > 0 :
+        for f in enr_files :
+            os.system('cp ' + hdr_dir + '/' + f + ' ' +  hdir_str + 'enrichment/' + f )
 
 
 if __name__ == '__main__':
