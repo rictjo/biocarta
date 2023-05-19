@@ -127,6 +127,7 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
         epls_ownership:str = 'angle' , bNonEuclideanBackprojection:bool = False ,
         Sfunc = lambda x:np.mean(x,0) , bAddPies:bool=False , bUseTDA:bool = False ,
         consensus_function = lambda x:np.sum(x) , consensus_labels:list[str] = None ,
+        bUseGeometricallyCenteredZvalues:bool = False ,
         contraction_quantile:float = None   ,
         contraction_depth:float    = None   ) -> tuple[pd.DataFrame] :
     #
@@ -158,6 +159,7 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
         'epls_ownership:str':epls_ownership , 'bNonEuclideanBackprojection:bool':bNonEuclideanBackprojection ,
         'Sfunc':Sfunc , 'bAddPies:bool':bAddPies , 'bUseTDA':bUseTDA ,
         'consensus_function':consensus_function , 'consensus_labels:list[str]':consensus_labels ,
+        'bUseGeometricallyCenteredZvalues:bool' : bUseGeometricallyCenteredZvalues ,
 	'contraction_quantile:float': contraction_quantile , ' contraction_depth:float': contraction_depth }
             ofile = open ( header_str + runinfo_file , 'w' )
             for item in run_dict.items():
@@ -204,8 +206,12 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
             n_components = m - 1
             print ( 'WARNING SETTING n_components TO :' , n_components )
     #
-    from impetuous.special import zvals
-    input_values = zvals( adf.values )['z']
+    if bUseGeometricallyCenteredZvalues :
+        from impetuous.quantification import mean_field,std_field
+        input_values = ( adf.values - mean_field(adf.values) ) / std_field(adf.values)
+    else :
+        from impetuous.special import zvals
+        input_values = zvals( adf.values )['z']
     #
     input_values_f = input_values
     input_values_s = input_values.T
