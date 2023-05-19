@@ -237,7 +237,11 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
                 if 'str' in str(type(label)) :
                     if label in jdf.index :
                         gdf = adf.T.groupby(jdf.loc[label]).apply( consensus_function ).T
-                        aux_vals = np.linalg.svd( zvals(gdf.values)['z'] , False )
+                        if bUseGeometricallyCenteredZvalues :
+                            z_values = ( gdf.values - mean_field(gdf.values) ) / std_field(gdf.values)
+                        else :
+                            z_values = zvals(gdf.values)['z']
+                        aux_vals = np.linalg.svd( z_values , False )
                         aux_vals = aux_vals[0]*aux_vals[1]
                         MF_f = np.concatenate([MF_f.T,aux_vals.T]).T
     #
