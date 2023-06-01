@@ -110,20 +110,6 @@ def symmetrize_broken_symmetry ( b_distm:np.array , method = 'average' ) -> np.a
     a_distm *= ( 1-np.eye(len(b_distm))>0 )
     return ( a_distm )
 
-def calculate_compositions( adf:pd.DataFrame , jdf:pd.DataFrame , label:str, bAddPies:bool=True ) -> pd.DataFrame :
-    from impetuous.quantification import compositional_analysis
-    from impetuous.quantification import composition_absolute
-    cdf			= composition_absolute ( adf=adf , jdf=jdf , label=label )
-    composition_df      = cdf.T.apply(compositional_analysis).T
-    composition_df .columns = ['Beta','Tau','Gini','Geni','TSI','FILLING']
-    max_quant_df        = cdf.T.apply(lambda x: x.index.values[np.argmax(x)] )
-    composition_df .loc[ max_quant_df.index.values , 'Leading Quantification Label' ] = max_quant_df.values
-    if bAddPies :
-        from impetuous.quantification import composition_piechart
-        fractions_df    = composition_piechart( cdf )
-        return ( pd.concat( [composition_df.T, fractions_df]).T )
-    return ( composition_df )
-
 def pivot_data ( mdf:pd.DataFrame , index:str ='index' , column:str = 'sample', values:str = 'value' ) -> pd.DataFrame :
     pdf = mdf.pivot( index = index , columns = [column] , values = values )
     return ( pdf )
@@ -431,7 +417,6 @@ def generate_neighbor_distance_information(  df:pd.DataFrame , lab:str='PCA' , i
     return ( file_info )
 
 
-
 def cluster_center_information ( all_convex_hulls:dict , sep:str = '\t' ) -> str :
     # results/Clustering_results/brain_HPA23v4/UMAP/cluster_centers.tsv
     N           = len( list(all_convex_hulls.items())[0][1]['center'] )
@@ -444,7 +429,6 @@ def cluster_center_information ( all_convex_hulls:dict , sep:str = '\t' ) -> str
     for item in all_convex_hulls.items() :
         file_info += str(item[0]) + sep + sep.join([str(v) for v in item[1]['center']] ) + '\n'
     return ( file_info )
-
 
 
 def create_cluster_polygon_information ( all_convex_hulls:dict , sep:str = '\t' ) -> str :
@@ -467,6 +451,7 @@ def create_cluster_polygon_information ( all_convex_hulls:dict , sep:str = '\t' 
         for crd in crds :
             file_info += sep.join([ str(item[0]) , '1' , '1' ,'primary' , *[str(c) for c in crd] , '1' , '1' ,   str(item[0])+'_1_1' ]) + '\n'
     return ( file_info )
+
 
 def create_directory ( directory_path:str ) :
     import os

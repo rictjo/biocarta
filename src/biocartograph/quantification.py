@@ -121,17 +121,19 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
         distance_type:str  = 'covariation' ,
         umap_dimension:int = 2 , umap_n_neighbors:int = 20 , umap_local_connectivity:float = 20. ,
         umap_seed:int = 42 , hierarchy_cmd:str = 'ward' , divergence = lambda r : np.exp(r) ,
-        add_labels:list[str] = None , sample_label:str = None , alignment_label:str = None , bRemoveCurse:bool=False ,
+        add_labels:list[str] = None , sample_label:str = None , alignment_label:str = None ,
+	bRemoveCurse:bool = False , bAuxConsensusPCA:bool=True ,
         n_projections:int = 2 , directory:str = './' , bQN:int = None ,
         nNeighborFilter:list[int] = None , heal_symmetry_break_method:str = 'average' ,
         epls_ownership:str = 'angle' , bNonEuclideanBackprojection:bool = False ,
         Sfunc = lambda x:np.mean(x,0) , bAddPies:bool=False , bUseTDA:bool = False ,
         consensus_function = lambda x:np.sum(x) , consensus_labels:list[str] = None ,
-        bUseGeometricallyCenteredZvalues:bool = False ,
+        bUseGeometricallyCenteredZvalues:bool = False , EPLSformula:str=None ,
         contraction_quantile:float = None   ,
         contraction_depth:float    = None   ) -> tuple[pd.DataFrame] :
     #
-    import biocartograph.special as biox
+    import biocartograph.special	as biox
+    import biocartograph.composition	as bioc
     #
     if bVerbose :
         print ( "TO DISABLE WRITING OF RESULTS TO", directory )
@@ -146,7 +148,7 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
             header_str = directory + header_str
             #
             # HERE WE INCLUDE ALL THE RUN PARAMETERS THAT ARE ACCESIBLE AS INPUTS
-            # AND FROM THE ENVIRONMENT AT THE START OF THE RUN
+            # OR ACCESSIBLE FROM THE ENVIRONMENT AT THE START OF THE RUN
             #
             runinfo_file = 'params.txt'
             run_dict = { 'bVerbose:bool':bVerbose , 'bExtreme:bool':bExtreme , 'n_clusters:list[int]':n_clusters ,
@@ -157,9 +159,9 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
         'bRemoveCurse:bool':bRemoveCurse , 'n_projections:int':n_projections , 'directory:str':directory , 'bQN:int':bQN ,
         'nNeighborFilter:list[int]':nNeighborFilter , 'heal_symmetry_break_method:str':heal_symmetry_break_method ,
         'epls_ownership:str':epls_ownership , 'bNonEuclideanBackprojection:bool':bNonEuclideanBackprojection ,
-        'Sfunc':Sfunc , 'bAddPies:bool':bAddPies , 'bUseTDA':bUseTDA ,
-        'consensus_function':consensus_function , 'consensus_labels:list[str]':consensus_labels ,
-        'bUseGeometricallyCenteredZvalues:bool' : bUseGeometricallyCenteredZvalues ,
+        'Sfunc':Sfunc , 'bAddPies:bool':bAddPies , 'bUseTDA:bool':bUseTDA , 'bAuxConsensusPCA:bool':bAuxConsensusPCA ,
+        'consensus_function':consensus_function , 'consensus_labels:list[str]' : consensus_labels ,
+        'bUseGeometricallyCenteredZvalues:bool' : bUseGeometricallyCenteredZvalues , 'EPLSformula:str':EPLSformula ,
 	'contraction_quantile:float': contraction_quantile , ' contraction_depth:float': contraction_depth }
             ofile = open ( header_str + runinfo_file , 'w' )
             for item in run_dict.items():
@@ -171,7 +173,7 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
 			'\n'.join([ '\t=\t '.join([str(i) for i in item if not i is None]) for item in globals().items() if not item is None ] ),
 			file = ofile )
     #
-    if bVerbose:
+    if bVerbose :
         print ( "INFORMATION : \t WARNINGS ISSUED AFTER THIS MESSAGE MEANS THAT SOME ITEMS WITH ZERO STANDARD DEVIATION WERE DROPPED\nBEGIN")
     adf = adf.iloc[ np.inf != np.abs( 1.0/np.std(adf.values,1) ) ,
                     np.inf != np.abs( 1.0/np.std(adf.values,0) ) ].copy().apply(pd.to_numeric)
@@ -183,7 +185,7 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
         if not ( alignment_label is None ) :
             if bVerbose :
                 print ( "CONDUCTING COMPOSITIONAL ANALYSIS" )
-            comp_df = biox.calculate_compositions ( adf , jdf, label = alignment_label , bAddPies=bAddPies )
+            comp_df = bioc.calculate_compositions ( adf , jdf, label = alignment_label , bAddPies=bAddPies )
             comp_df.columns = [ alignment_label +'.'+ c for c in comp_df.columns.values ]
             if bVerbose :
                 print (  'FINISHED RESULTS > ' , 'composition.tsv' )
@@ -324,7 +326,7 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
     if not jdf is None :
         if not ( alignment_label is None ) :
             if bVerbose :
-                print ( "MULTIVAR ALIGNED PCA" )
+                print ( "MULTIVAR ALIGNED PCA", alignment_label ) # ALWAYS ON ALIGNMENT LABEL
             from impetuous.quantification import multivariate_aligned_pca
             if sample_label is None :
                 jdf.loc['samplenames'] = jdf.columns.values
@@ -332,14 +334,43 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
             pcas_df , pcaw_df = multivariate_aligned_pca ( adf , jdf ,
                     sample_label = sample_label , align_to = alignment_label ,
                     n_components = n_components , add_labels = add_labels )
+            print ( 'DONE' )
+            aux_labels = list( set( consensus_labels ) - set([alignment_label]) )
+            if bAuxConsensusPCA :
+                print ( 'MUTLIVAR AUX ALIGNED PCA: ' , aux_labels  )
+                for a_label in aux_labels :
+                    tmp_pcas_df , tmp_pcaw_df = multivariate_aligned_pca ( adf , jdf ,
+                        sample_label = sample_label , align_to = a_label ,
+                        n_components = n_components , add_labels = add_labels )
+                    tpsdf = tmp_pcas_df.loc[ : , [ c for c in tmp_pcas_df.columns if not 'PCA' in c ] ]
+                    tpsdf .columns = [ 'AUX.'+a_label+'.'+c for c in tpsdf.columns ]
+                    tpwdf = tmp_pcaw_df.loc[ : , [ c for c in tmp_pcaw_df.columns if not 'PCA' in c ] ]
+                    tpwdf.columns = [ 'AUX.'+a_label+'.'+c for c in tpwdf.columns ]
+                    pcas_df = pd.concat([ pcas_df.T, tpsdf.T ]).T
+                    pcaw_df = pd.concat([ pcaw_df.T, tpwdf.T ]).T
+            #
             if bVerbose :
                 print ( "ENCODED PLS REGRESSION" )
             from impetuous.quantification import run_rpls_regression as epls
-            jdf = jdf.rename(index={alignment_label:'AL0xXx'})
-            res = epls ( analyte_df=adf, journal_df=jdf, formula = 'Expression~C(AL0xXx)' , owner_by = epls_ownership )
-            jdf = jdf.rename(index={'AL0xXx':alignment_label})
-            res[0].columns = [ 'EPLS.' + v for v in res[0].columns.values ]
-            res[1].columns = [ 'EPLS.' + v for v in res[1].columns.values ]
+            #
+            L_ = 'abcdefghijklmnopqrstuvwxyz'.upper()
+            idx_rename = None # CREATES AN ACRONYM
+            if EPLSformula is None :
+                formula = "Expression~"
+                epls_labels = [ alignment_label ]
+                idx_rename = { epls_labels[i_] : L_[i_] + "L0xXx" for i_ in range(len( epls_labels )) }
+                for c in idx_rename.values() :
+                    formula +='C('+c+')+'
+                formula = formula[:-1]
+            else :
+                formula = EPLSformula
+            jdf = jdf.rename( index = idx_rename )
+            print ( 'EPLS:', formula )
+            res = epls ( analyte_df=adf, journal_df=jdf , formula = formula , owner_by = epls_ownership )
+            if not idx_rename is None :
+                jdf = jdf.rename( index = {v:k for (k,v) in idx_rename.items() } )
+            res[0] .columns = [ 'EPLS.' + v for v in res[0].columns.values ]
+            res[1] .columns = [ 'EPLS.' + v for v in res[1].columns.values ]
             if bVerbose :
                 print ( 'FINISHED RESULTS > ', 'pcas_df.tsv', 'pcaw_df.tsv', 'epls_f.tsv' , 'epls_s.tsv' )
             if not directory is None:
@@ -349,7 +380,6 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
                 res[ 1 ].to_csv ( header_str + 'epls_s.tsv' , sep='\t' )
             resdf_f = pd.concat( [resdf_f.T, pcas_df.T , res[0].T , comp_df.T ] ).T
             resdf_s = pd.concat( [resdf_s.T, pcaw_df.T , res[1].T ] ).T
-    #
     if bVerbose :
         print ( 'RETURNING: ')
         print ( 'FEATURE MAP, SAMPLE MAP, FULL FEATURE HIERARCHY, FULL SAMPLE HIERARCHY' )
