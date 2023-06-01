@@ -13,7 +13,8 @@ setuptools.setup(
     long_description_content_type = "text/markdown",
     url = "https://github.com/rictjo/biocarta",
     packages = setuptools.find_packages('src'),
-    package_dir = {'biocartograph':'src/biocartograph','quantification':'src/quantification','special':'src/special','enrichment':'src/enrichment'},
+    package_dir = {	'biocartograph':'src/biocartograph' , 'quantification':'src/quantification' ,
+			'composition':'src/composition' , 'special':'src/special' , 'enrichment':'src/enrichment' },
     classifiers = [
         "Programming Language :: Python :: 3.9",
         "License :: OSI Approved :: Apache Software License",
