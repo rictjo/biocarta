@@ -151,6 +151,48 @@ def calculate_for_cluster_groups ( df:pd.DataFrame , label:str = None ,
     """
     return ( dag_maps )
 
+import pandas as pd
+import numpy  as np
+
+from biocartograph.composition import composition_leading_label_and_metric
+
+def auto_annotate_clusters (	header_str:str = '../results/DMHMSY_Fri_Jun__2_09_15_35_2023_'	,
+				alignment_information:str       	= "pcas_df.tsv"		,
+				cluster_information:str         	= "resdf_f.tsv"		,
+				final_cluster_label:str         	= "cids.max"		,
+				enrichment_results_file_pattern:str 	= "(HEADER)treemap_c(CLUSTID).tsv" ) -> pd.DataFrame :
+    #
+    df_pca =        pd.read_csv( header_str + alignment_information , sep='\t', index_col=0 )
+    df_clu =        pd.read_csv( header_str + cluster_information   , sep='\t', index_col=0 )
+    #
+    merged_info = pd.concat ( [	df_clu .loc[:,[final_cluster_label]].T	,
+				df_pca .loc[:,[ c for c in df_pca.columns if 'Owner' in c ]].T,
+			 ]).T.rename( columns = { final_cluster_label:'cluster' } )
+    merged_info.columns	= [ v.replace('Owner','PCA.owner') for v in  merged_info.columns.values ]
+    consolidate		= [ c for c in merged_info.columns if 'owner' in c ]
+    #
+    from collections import Counter
+    # AUTO ANNOTATIONS
+    if len( consolidate ) > 1 :
+        auto_annotated_df = merged_info.groupby('cluster').apply(lambda x: pd.Series( [ len(x) ,
+		*[ v for v in composition_leading_label_and_metric(Counter(x.loc[ :, consolidate[0] ].values)).values() ]   ,
+		*[ v for v in composition_leading_label_and_metric(Counter(x.loc[ :, consolidate[1] ].values)).values() ] ] ,
+			index = [ 'N' , 'Reliability-Spec,Tau' , 'Specificity' ,
+					'Reliability-Aux,Tau'  , 'Auxiliary Annotation' ] ) )
+    else :
+        auto_annotated_df = merged_info.groupby('cluster').apply(lambda x: pd.Series( [ len(x) ,
+                *[ v for v in composition_leading_label_and_metric(Counter(x.loc[ :, consolidate[0] ].values)).values() ] ] ,
+                        index = [ 'N' , 'Reliability-Spec,Tau' , 'Specificity' ] ) )
+    #
+    # ADD IN TOP ENRICHMENT
+    function = []
+    for cid in auto_annotated_df .index.values.tolist() :
+        filename	= enrichment_results_file_pattern.replace('(HEADER)',header_str).replace('(CLUSTID)',str(cid))
+        df		= pd.read_csv(filename,sep='\t',index_col=0)
+        function .append( df.iloc[ np.argmin( df.loc[:,'p-value'].values ) , : ].loc['description'] )
+    auto_annotated_df.loc[:,'Function'] = function
+    return ( auto_annotated_df )
+
 
 def benchmark_group_expression_with_univariate_foldchange ( group_df:pd.DataFrame , journal_df:pd.DataFrame ,
                         major_group_label:str = None , what_thing:str = None , bRanked:bool=False ,
