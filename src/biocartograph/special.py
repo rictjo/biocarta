@@ -122,8 +122,8 @@ def check_directory ( dir_string:str ,
     if not ( dir_string[0] == '~' or dir_string[0] == '/' ) :
         print ( "INCLOMPLETE DIRECTORY" )
     import os
-    contents = os.listdir(dir_string)
-    what = []
+    contents	= os.listdir(dir_string)
+    what	= []
     for thing in contents :
         if 'str' in str(type(use_exclusion)):
             if 'pruned' in thing :
@@ -132,7 +132,7 @@ def check_directory ( dir_string:str ,
             what.append( [dir_string+thing ,'\t' if '.tsv' in thing else ',' if '.csv' in thing else 'X' if '.xlsx' in thing else ' ' ] )
     return ( what )
 
-def prune_dataframe( df:pd.DataFrame , indices:str , property_name:str , value_name:str ) -> pd.DataFrame :
+def prune_dataframe ( df:pd.DataFrame , indices:str , property_name:str , value_name:str ) -> pd.DataFrame :
         from biocartograph.special import pivot_data
         pdf = pivot_data( df, index = indices , column = property_name , values = value_name )
         pdf = pdf.dropna( )
@@ -156,7 +156,6 @@ def create_file_lookup( files:list[str] ) -> dict :
                 break
     return ( file_lookup )
 
-
 def reformat_results_to_gmtfile_pcfile (	header_str:str          = '../results/DMHMSY_Fri_Mar_17_14_37_07_2023_' ,
 						hierarchy_file:str	= 'resdf_f.tsv' ,
 						hierarchy_id:str	= 'cids.user.'  ,
@@ -176,7 +175,7 @@ def reformat_results_to_gmtfile_pcfile (	header_str:str          = '../results/D
         gmtdf = df.groupby(hierarchy_id).apply(lambda x:x.index.values.tolist())
         GMTS = list()
         for name,entry in zip(gmtdf.index,gmtdf.values) :
-            GMTS.append(  hierarchy_level_label + '-' + 'cluster id ' + str(name) + '\t' + str(name) + '\t' + '\t'.join(entry)  )
+            GMTS .append(  hierarchy_level_label + '-' + 'cluster id ' + str(name) + '\t' + str(name) + '\t' + '\t'.join(entry)  )
         return ( GMTS , None )
     df.loc[:,hierarchy_id+'0'] = 1 # ROOT
     #
@@ -246,7 +245,6 @@ def reformat_results_to_gmtfile_pcfile (	header_str:str          = '../results/D
         PCL.append([ -1, item[0] , item[1] ])
     return ( GMTS, PCL )
 
-
 def reformat_results_and_print_gmtfile_pcfile ( header_str:str          = '../results/DMHMSY_Fri_Mar_17_14_37_07_2023_' ,
 						hierarchy_file:str      = 'resdf_f.tsv' ,
                                                 hierarchy_id:str        = 'cids.user.' ,
@@ -277,7 +275,7 @@ def reformat_results_and_print_gmtfile_pcfile ( header_str:str          = '../re
     return( gmtname , pcname )
 
 def rescreen (  header_str:str          = "../results/DMHMSY_Wed_Apr__5_10_02_33_2023_" ,
-                full_solution:str       = "hierarch_f.tsv" ,
+                full_solution:str       = "hierarch_f.tsv" , bVerbose:bool=False ,
                 o_filename:str          = None ) -> pd.DataFrame :
     #
     filename            = header_str + full_solution
@@ -295,7 +293,8 @@ def rescreen (  header_str:str          = "../results/DMHMSY_Wed_Apr__5_10_02_33
                 full_result_dict[ item[0] ] += item[1]
             else :
                 full_result_dict[ item[0] ]  = item[1]
-        print ( 'DONE' , i , 'OF' , L, 'OR',i/L )
+        if bVerbose:
+            print ( 'DONE' , i , 'OF' , L, 'OR',i/L )
     df_ = pd.DataFrame( full_result_dict.items() , columns=['k','v'] )
     if not o_filename is None :
         df_.to_csv( o_filename , sep='\t' )
@@ -325,7 +324,6 @@ def contract ( a:np.array , d:float=None , q:float=None , quantile:float=0.05 ) 
     P  = np.array(list(map( lambda x:contraction(x , q=q_ , d=d_) , b ))).reshape(nm)
     return ( P )
 
-
 def contract_df ( a:pd.DataFrame , d:float=None , q:float=None , quantile:float=0.05 ) -> pd.DataFrame :
     nm = np.shape(a.values)
     b  = a.values.reshape(-1)
@@ -336,7 +334,6 @@ def contract_df ( a:pd.DataFrame , d:float=None , q:float=None , quantile:float=
         q_ = np.quantile( b , q=quantile )
     # THIS OPERATION IS SLOWER
     return ( a.apply( lambda x : pd.Series([contraction(x_ , q=q_ , d=d_ ) for x_ in x],name=x.name,index=x.index) )  )
-
 
 def generate_hulls ( df:pd.DataFrame , gid:str = 'cids.max' , hid:str='UMAP.' ,
                      cid:str = None , xid:str = None ,
@@ -377,7 +374,7 @@ def generate_hulls ( df:pd.DataFrame , gid:str = 'cids.max' , hid:str='UMAP.' ,
         hull_border  = [ [ *points[convex_hull.vertices,i], points[convex_hull.vertices[0],i] ] for i in range(len(projection_crds)) ]
         convex_hull_center  = np.mean(points,0)
         all_convex_hulls[ gid_nr ] = { 'area':convex_hull.area , 'center':convex_hull_center , 'border':hull_border,
-					'info' : 'scipy spatial ConvexHull : ' + qhull_options if not qhull_options is None else 'default settings' }
+					    'info' : 'scipy spatial ConvexHull : ' + qhull_options if not qhull_options is None else 'default settings' }
         if bPlottered :
             plt.plot ( hull_border[0] , hull_border[1] , 'r-')
             plt.plot ( convex_hull_center[0] , convex_hull_center[1] , '*k' )
@@ -449,7 +446,7 @@ def create_cluster_polygon_information ( all_convex_hulls:dict , sep:str = '\t' 
         crds = np.array(crds).reshape(-1)
         crds = [ [ crds[k*M+i] for k in range(DIM) ] for i in range(M) ]
         for crd in crds :
-            file_info += sep.join([ str(item[0]) , '1' , '1' ,'primary' , *[str(c) for c in crd] , '1' , '1' ,   str(item[0])+'_1_1' ]) + '\n'
+            file_info += sep.join([ str(int(float(item[0]))) , '1' , '1' ,'primary' , *[str(c) for c in crd] , '1' , '1' ,   str(int(float(item[0])))+'_1_1' ]) + '\n'
     return ( file_info )
 
 
@@ -481,6 +478,7 @@ def generate_atlas_files ( header_str:str ,
                 umfile:str = 'UMAP/UMAP.tsv' ,
                 ccfile:str = 'UMAP/cluster_centers.tsv' ,
 		pofile:str = 'UMAP/UMAP_polygons.tsv' ,
+                anfile:str = 'enrichment/cluster_annotations.tsv',
                 pcadir:str = 'PCA/',
                 evadir:str = 'evaluation/',
                 nNN:int=20 ,
@@ -494,6 +492,8 @@ def generate_atlas_files ( header_str:str ,
     hdir_str = header_str
     if hdir_str[-1] == '_' :
         hdir_str =  hdir_str[:-1] + '/'
+    elif  hdir_str[-1] != '/' :
+        hdir_str += '/'
     #
     df_sol_     = pd.read_csv( header_str + 'resdf_f.tsv' , sep=sep , index_col=0 ) # SHOULD BE ASSERTED
     df_pca_     = pd.read_csv( header_str + 'pcas_df.tsv' , sep=sep , index_col=0 ) # SHOULD BE ASSERTED
@@ -503,7 +503,7 @@ def generate_atlas_files ( header_str:str ,
             pcadir += '/'
         create_directory ( hdir_str + pcadir )
         df_pca_ .to_csv( hdir_str + pcadir + 'pca_analytes_df.tsv' )
-        df_pca_s.to_csv( hdir_str + pcadir +  'pca_samples_df.tsv' )
+        df_pca_s.to_csv( hdir_str + pcadir + 'pca_samples_df.tsv'  )
     #
     if 'str' in str(type(evadir)) :
         if evadir[-1] != '/' :
@@ -540,6 +540,7 @@ def generate_atlas_files ( header_str:str ,
     create_directory ( hdir_str + '/'.join( umfile.split('/')[:-1]) )
     udf = df.loc[:,[c for c in df.columns if 'UMAP' in c ] ]
     udf .columns = [ c.replace('.','_') for c in udf.columns ]
+    udf = udf .rename( columns={'UMAP_0_scaled':'UMAP_1_scaled','UMAP_1_scaled':'UMAP_2_scaled'} )
     udf .to_csv( hdir_str + umfile, sep=sep )
     #
     create_directory ( hdir_str + '/'.join( ccfile.split('/')[:-1]) )
@@ -568,15 +569,18 @@ def generate_atlas_files ( header_str:str ,
     id_tag    = header_str.split('/')[-1]
     import os
     enr_files = [ l for l in set(os.listdir(hdr_dir)) if id_tag in l and ('treemap' in l or 'GFA' in l or 'enrichment' in l ) ]
-    if len(enr_files) > 0 :
+    if len( enr_files ) > 0 :
         for f in enr_files :
             os.system('cp ' + hdr_dir + '/' + f + ' ' +  hdir_str + 'enrichment/' + f )
+    from biocartograph.enrichment import auto_annotate_clusters
+    an_df	= auto_annotate_clusters ( header_str )
+    create_directory ( hdir_str + '/'.join( anfile.split('/')[:-1]) )
+    an_df	.to_csv( hdir_str + anfile , sep='\t' )
 
-
-if __name__ == '__main__':
+if __name__ == '__main__' :
     #
-    reformat_results_and_print_gmtfile_pcfile(header_str = '../results/DMHMSY_Fri_Mar_17_14_37_07_2023_' )
-    reformat_results_and_print_gmtfile_pcfile(header_str = '../results/DMHMSY_Fri_Mar_17_16_00_47_2023_' )
+    reformat_results_and_print_gmtfile_pcfile( header_str = '../results/DMHMSY_Fri_Mar_17_14_37_07_2023_' )
+    reformat_results_and_print_gmtfile_pcfile( header_str = '../results/DMHMSY_Fri_Mar_17_16_00_47_2023_' )
     #
     results_dir = '../results/'
     header_str  = results_dir + 'DMHMSY_Wed_May__3_11_48_58_2023_'
