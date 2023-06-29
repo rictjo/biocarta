@@ -127,7 +127,7 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
         nNeighborFilter:list[int] = None , heal_symmetry_break_method:str = 'average' ,
         epls_ownership:str = 'angle' , bNonEuclideanBackprojection:bool = False ,
         Sfunc = lambda x:np.mean(x,0) , bAddPies:bool=False , bUseTDA:bool = False ,
-        consensus_function = lambda x:np.sum(x) , consensus_labels:list[str] = None ,
+        consensus_function = lambda x:np.sum(x) , consensus_labels:list[str] = None , bDisbandAggregation:bool = True ,
         bUseGeometricallyCenteredZvalues:bool = False , EPLSformula:str=None ,
         contraction_quantile:float = None   ,
         contraction_depth:float    = None   ) -> tuple[pd.DataFrame] :
@@ -160,9 +160,9 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
         'nNeighborFilter:list[int]':nNeighborFilter , 'heal_symmetry_break_method:str':heal_symmetry_break_method ,
         'epls_ownership:str':epls_ownership , 'bNonEuclideanBackprojection:bool':bNonEuclideanBackprojection ,
         'Sfunc':Sfunc , 'bAddPies:bool':bAddPies , 'bUseTDA:bool':bUseTDA , 'bAuxConsensusPCA:bool':bAuxConsensusPCA ,
-        'consensus_function':consensus_function , 'consensus_labels:list[str]' : consensus_labels ,
+        'consensus_function':consensus_function , 'consensus_labels:list[str]' : consensus_labels , 'bDisbandAggregation:bool' : bDisbandAggregation ,
         'bUseGeometricallyCenteredZvalues:bool' : bUseGeometricallyCenteredZvalues , 'EPLSformula:str':EPLSformula ,
-	'contraction_quantile:float': contraction_quantile , ' contraction_depth:float': contraction_depth }
+	'contraction_quantile:float': contraction_quantile , 'contraction_depth:float': contraction_depth }
             ofile = open ( header_str + runinfo_file , 'w' )
             for item in run_dict.items():
                 if 'list' in str(type(item[1])):
@@ -233,7 +233,7 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
     # CONSENSUS CONDENSATION IS NOT DONE FOR SAMPLE SPACE
     # THIS WILL AFFECT THE UMAP NOT THE CLUSTERING DISTANCES IF
     # NOT THE bUseUMAP IS SET TRUE
-    if not consensus_labels is None :
+    if not consensus_labels is None and not bDisbandAggregation :
         if 'list' in str(type(consensus_labels)) :
             for label in consensus_labels :
                 if 'str' in str(type(label)) :

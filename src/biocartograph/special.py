@@ -472,6 +472,27 @@ def quick_check_solution(header_str:str = '../results/DMHMSY_Tue_May__2_10_57_05
     print ( df.iloc[:,np.argmax(df.iloc[1,:].values)]   )
 
 
+def simple_membership_inference( header_str:str ) :
+        df = pd.read_csv(  header_str[:-1] + '/clustering/final_consensus.tsv' ,sep='\t' ,index_col = 0 )
+        cs = sorted(list(set( df.loc[:,'cluster'].values.tolist() )))
+        N  = len(cs)
+        n_trials = 100.
+        uncertainty = 0.5
+        dfmc = np.abs(pd.DataFrame( [ cs==v for v in df.values ] , index=df.index )*N*n_trials+uncertainty )
+        dfmc .columns = cs
+        dfmc = ( dfmc.T / np.sum(dfmc,1) ) .T
+        #
+        df_ = pd.DataFrame( [ q for q in zip( dfmc.values.reshape(-1) ,
+                [ v for w in dfmc.index.values for v in dfmc.columns.values ] ,
+                [ w for w in dfmc.index.values for v in dfmc.columns.values ] ) ] )
+        df_ .index      = df_.iloc[:,-1]
+        df_ .index.name = 'gene'
+        df_             = df_.iloc[:,[0,1]]
+        df_ .columns    = ['membership','cluster']
+        df_ .loc[:,'nclust'] = [ int(c) for c in df_.loc[:,'cluster'].values.tolist() ]
+        df_ = df_.sort_values('nclust').loc[:,['membership','cluster']]
+        df_ .to_csv( header_str[:-1] + '/clustering/cluster_memberships.tsv',sep='\t')
+
 def generate_atlas_files ( header_str:str ,
                 fcfile:str = 'clustering/final_consensus.tsv' ,
 		nnfile:str = 'distance/nearest_neighbors.tsv' ,
@@ -481,6 +502,7 @@ def generate_atlas_files ( header_str:str ,
                 anfile:str = 'enrichment/cluster_annotations.tsv',
                 pcadir:str = 'PCA/',
                 evadir:str = 'evaluation/',
+                enrichment_results_file_pattern:list[str] = ["(HEADER)treemap_c(CLUSTID).tsv"] ,
                 nNN:int=20 ,
                 additional_directories:list[str] = ['data','enrichment','evaluation','graph','PCA','UMAP',
 					'svg'  , 'svg/heatmap','svg/bubble','svg/treemap','svg/fountain',
@@ -573,9 +595,11 @@ def generate_atlas_files ( header_str:str ,
         for f in enr_files :
             os.system('cp ' + hdr_dir + '/' + f + ' ' +  hdir_str + 'enrichment/' + f )
     from biocartograph.enrichment import auto_annotate_clusters
-    an_df	= auto_annotate_clusters ( header_str )
+    an_df	= auto_annotate_clusters ( header_str , enrichment_results_file_pattern = enrichment_results_file_pattern )
     create_directory ( hdir_str + '/'.join( anfile.split('/')[:-1]) )
     an_df	.to_csv( hdir_str + anfile , sep='\t' )
+    #
+    simple_membership_inference( header_str )
 
 if __name__ == '__main__' :
     #

@@ -12,13 +12,14 @@ limitations under the License.
 """
 import pandas as pd
 import numpy  as np
+import os
 
 def create_specificity_group_df ( acdf:pd.DataFrame , df_:pd.DataFrame , index_order:list=None ,
                                   label:str = '' , post_fix:str = '' , bSorted:bool=True , slab:str = 'Specificity Class' ,
                                   rename_cats:dict = { '0':'ND' , '1':'LS' , '2':'GE' , '3':'GR' , '4':'TR' } ) :
         from impetuous.quantification import group_classifications , composition_absolute, compositional_analysis
         from collections import Counter
-        lab1 = label
+        lab1		= label
         results		= group_classifications ( acdf.apply(pd.to_numeric) , bLog2=True )
         new		= [ {w:item[0] for w in item[1]} for item in results.items() ]
         lookup		= dict()
@@ -151,16 +152,37 @@ def calculate_for_cluster_groups ( df:pd.DataFrame , label:str = None ,
     """
     return ( dag_maps )
 
-import pandas as pd
-import numpy  as np
-
 from biocartograph.composition import composition_leading_label_and_metric
+#
+def get_annotation_function(	header_str:str = '../results/DMHMSY_Fri_Jun__2_09_15_35_2023_'	,
+				auto_annotated_df:pd.DataFrame		= None 			,
+				significance_level:float                = 0.1			,
+				enrichment_file_pattern:str     = "(HEADER)treemap_c(CLUSTID).tsv" ) -> list[str] :
+    #
+    # ADD IN TOP ENRICHMENT AS FUNCTION
+    function = []
+    set_all_files = set( os.listdir( '/'.join(header_str.split('/')[:-1]) ) )
+    for cid in auto_annotated_df .index.values.tolist() :
+        filename        = enrichment_file_pattern.replace('(HEADER)',header_str).replace('(CLUSTID)',str(cid))
+        fn              = filename.split('/')[-1]
+        if not fn in set_all_files :
+            function.append( 'Unknown' )
+            continue
+        df              = pd.read_csv(filename,sep='\t',index_col=0)
+        if len(df) > 0 :
+            if df.iloc[ np.argmin( df.loc[:,'p-value'].values ) , : ].loc['p-value'] < significance_level :
+                function .append( df.iloc[ np.argmin( df.loc[:,'p-value'].values ) , : ].loc['description'] )
+                continue
+        function .append( 'Unknown' )
+    return ( function )
+
 
 def auto_annotate_clusters (	header_str:str = '../results/DMHMSY_Fri_Jun__2_09_15_35_2023_'	,
 				alignment_information:str       	= "pcas_df.tsv"		,
 				cluster_information:str         	= "resdf_f.tsv"		,
 				final_cluster_label:str         	= "cids.max"		,
-				enrichment_results_file_pattern:str 	= "(HEADER)treemap_c(CLUSTID).tsv" ) -> pd.DataFrame :
+				significance_level:float		= 0.1			,
+				enrichment_results_file_pattern:list[str] 	= ["(HEADER)treemap_c(CLUSTID).tsv"] ) -> pd.DataFrame :
     #
     df_pca =        pd.read_csv( header_str + alignment_information , sep='\t', index_col=0 )
     df_clu =        pd.read_csv( header_str + cluster_information   , sep='\t', index_col=0 )
@@ -171,26 +193,38 @@ def auto_annotate_clusters (	header_str:str = '../results/DMHMSY_Fri_Jun__2_09_1
     merged_info.columns	= [ v.replace('Owner','PCA.owner') for v in  merged_info.columns.values ]
     consolidate		= [ c for c in merged_info.columns if 'owner' in c ]
     #
+    def reformat_local( x , consolidate ) -> pd.Series :
+        rv = [ len(x) ]
+        labs = ['N']
+        for console in consolidate :
+            i = 0
+            for w in composition_leading_label_and_metric( Counter(x.loc[ :, console ].values) ).values()  :
+                rv  .append( w )
+                postfix = ''
+                if i==0 :
+                    postfix = ',Tau'
+                labs.append( console.replace( 'PCA.owner','Specificity' ) + postfix )
+                i += 1
+        return ( pd.Series(rv,index=labs) )
+    #
     from collections import Counter
+    #
     # AUTO ANNOTATIONS
     if len( consolidate ) > 1 :
-        auto_annotated_df = merged_info.groupby('cluster').apply(lambda x: pd.Series( [ len(x) ,
-		*[ v for v in composition_leading_label_and_metric(Counter(x.loc[ :, consolidate[0] ].values)).values() ]   ,
-		*[ v for v in composition_leading_label_and_metric(Counter(x.loc[ :, consolidate[1] ].values)).values() ] ] ,
-			index = [ 'N' , 'Reliability-Spec,Tau' , 'Specificity' ,
-					'Reliability-Aux,Tau'  , 'Auxiliary Annotation' ] ) )
+        auto_annotated_df = merged_info.groupby('cluster').apply( lambda x: reformat_local(x,consolidate) )
     else :
         auto_annotated_df = merged_info.groupby('cluster').apply(lambda x: pd.Series( [ len(x) ,
                 *[ v for v in composition_leading_label_and_metric(Counter(x.loc[ :, consolidate[0] ].values)).values() ] ] ,
                         index = [ 'N' , 'Reliability-Spec,Tau' , 'Specificity' ] ) )
     #
     # ADD IN TOP ENRICHMENT
-    function = []
-    for cid in auto_annotated_df .index.values.tolist() :
-        filename	= enrichment_results_file_pattern.replace('(HEADER)',header_str).replace('(CLUSTID)',str(cid))
-        df		= pd.read_csv(filename,sep='\t',index_col=0)
-        function .append( df.iloc[ np.argmin( df.loc[:,'p-value'].values ) , : ].loc['description'] )
-    auto_annotated_df.loc[:,'Function'] = function
+    for enrichment_file_pattern,i_ in zip( enrichment_results_file_pattern , range(len(enrichment_results_file_pattern)) ) :
+        function = get_annotation_function(	header_str 			= header_str			,
+						auto_annotated_df		= auto_annotated_df		,
+                                		significance_level 		= significance_level 		,
+                                		enrichment_file_pattern		= enrichment_file_pattern	)
+        auto_annotated_df.loc[:,'Function,'+str(i_)] = function
+
     return ( auto_annotated_df )
 
 
@@ -296,7 +330,7 @@ def from_multivariate_group_factors (	analyte_df:pd.DataFrame ,
         if bVerbose :
             print ( 'USING THE FORMULA: ', used_formula )
             print ( 'GROUP MODULATION OF THE VALUES: ',set( jdf.loc[instance_label].values ) )
-
+        #
         if pcfile is None :
             results = gFArEnr ( analyte_df = adf , journal_df = jdf ,
 				formula = used_formula ,
