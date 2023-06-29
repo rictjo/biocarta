@@ -6,7 +6,10 @@ Creating Cartographic Representations of Biological Data
 ```
 pip install biocartograph
 ```
-You can also build a [nix environment](https://github.com/rictjo/versioned-nix-environments/blob/main/env/versioned_R_and_Python.nix) for code exectution if you have installed the [nix package](https://nixos.org/download.html) manager.
+You can also build a [nix environment](https://github.com/rictjo/versioned-nix-environments/blob/main/env/versioned_R_and_Python.nix) for code exectution if you have installed the [nix package](https://nixos.org/download.html) manager. You can enter it via a terminal by issuing:
+```
+nix-shell versioned_R_and_Python.nix
+```
 
 # Example code
 We generally work with short, or compact, format data frames. One describing the analytes (often abbreviated "adf") :
