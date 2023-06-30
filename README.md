@@ -6,7 +6,7 @@ Creating Cartographic Representations of Biological Data
 ```
 pip install biocartograph
 ```
-You can also build a [nix environment](https://github.com/rictjo/versioned-nix-environments/blob/main/env/versioned_R_and_Python.nix) for code exectution if you have installed the [nix package](https://nixos.org/download.html) manager. You can enter it via a terminal by issuing:
+You can also build a [nix environment](https://github.com/rictjo/versioned-nix-environments/blob/main/env/versioned_R_and_Python.nix) for code execution if you have installed the [nix package](https://nixos.org/download.html) manager. You can enter it via a terminal by issuing:
 ```
 nix-shell versioned_R_and_Python.nix
 ```
@@ -45,7 +45,7 @@ if __name__ == '__main__' :
     jdf = jdf.loc[:,adf.columns.values]
 ```
 
-Next we specify how to conduct the calculation
+Next, we specify how to conduct the calculation
 ```
     consensus_labels = ['Tissue']
     results = full_mapping ( adf , jdf                                  ,
@@ -72,9 +72,7 @@ Next we specify how to conduct the calculation
 In this example, we didn't calculate any projection properties relating to the Cell-line label. We also decided on outputting some specific cuts through the hierarchical clustering solution corresponding to different amounts of clusters. We generate multivariate projected PCA files for all the consensus and alignment labels. Plotting the information on the map analytes PCA projections yields:
 [Cancer Disease mPCA Example](https://rictjo.github.io/?https://gist.githubusercontent.com/rictjo/ed1d6768f9ffa11ada2a6c5ad75094ca/raw/74dd22f261f9925fd005d539a851ae013df0c574/index.html)
 
-You can also run an alternative algorithm where the UMAP coordinates are employed directly for clustering by setting `bUseUmap=True` with the following [results](https://rictjo.github.io/?https://gist.githubusercontent.com/rictjo/8be5b5a9cc7f06ea7455d6c6ecc11ad8/raw/e00ea663a1218718f542744a939e0b05c604e8ab/index.html).
-
-or download the gist zip and open the html index:
+You can also run an alternative algorithm where the UMAP coordinates are employed directly for clustering by setting `bUseUmap=True` with the following [results](https://rictjo.github.io/?https://gist.githubusercontent.com/rictjo/8be5b5a9cc7f06ea7455d6c6ecc11ad8/raw/e00ea663a1218718f542744a939e0b05c604e8ab/index.html), or download the gist zip and open the html index:
 ```
 chromium index.html
 ```
@@ -83,7 +81,7 @@ chromium index.html
 
 The clustering visualisations were created using the [Biocartograph](https://pypi.org/project/biocartograph/) and [hvplot](https://pypi.org/project/hvplot/) :
 
-What groupings correspond to biomarker variance that describe them? Here are some visualisations of that:
+What groupings correspond to biomarker variance that describes them? Here are some visualisations of that:
 
 [Cell-line Diseases](https://rictjo.github.io/?https://gist.githubusercontent.com/rictjo/786fa0b8706bb02ccb2cd3bba3f5c35d/raw/0ad4261d267f7550ddae1714e16aec8301127af0/index.html)
 [Tissues](https://rictjo.github.io/?https://gist.githubusercontent.com/rictjo/f8556c6d5b9f0369138eb194356e2818/raw/cd42c623460f049b39fbc311253526bd0fec0cd5/index.html)
@@ -91,10 +89,10 @@ What groupings correspond to biomarker variance that describe them? Here are som
 [Brain tissues](https://rictjo.github.io/?https://gist.githubusercontent.com/rictjo/cb0d68fb6a853b862806b6ba1cd01ea4/raw/48d1441df9299dd67774529f67e230128603db3e/index.html)
 [Blood immune cells](https://rictjo.github.io/?https://gist.githubusercontent.com/rictjo/c55222e45b04b35c48f4506a0d463ba9/raw/885f089ca81d3f8705b70c9666ab168dfcc01188/index.html)
 
-We can also make more [elaborate visualisation](https://rictjo.github.io/?https://gist.githubusercontent.com/rictjo/0609bfb6a6113703155f3c08058d1855/raw/47b27519da996cde17f32e7d386ea527a89eba8a/index.html) applications with the information that biocartograph calculates.
+We can also make more [elaborate visualisation](https://rictjo.github.io/?https://gist.githubusercontent.com/rictjo/0609bfb6a6113703155f3c08058d1855/raw/47b27519da996cde17f32e7d386ea527a89eba8a/index.html) applications with the information that the biocartograph calculates.
 
 # Enrichment results
-If we have gmt files describing what groups of our analytes might be in then we can calculate enrichment properties for gene groupings (clusters). One resource for obtaining information is from the [Reactome](https://reactome.org/download-data) database. If the pathway definitions are hierarchical then you can also supply the parent-child list and calculate treemap enrichments for all your clusters.
+If we have gmt files describing what groups of our analytes might be in then we can calculate enrichment properties for gene groupings (clusters). One resource for obtaining information is the [Reactome](https://reactome.org/download-data) database. If the pathway definitions are hierarchical then you can also supply the parent-child list and calculate treemap enrichments for all your clusters.
 [Example of biocartograph treemap cluster](https://rictjo.github.io/?https://gist.githubusercontent.com/rictjo/146ba66109c6554684dc387348d21a82/raw/a32f1e7c80cc6ebe53c33039e2adfb4512e3ce4b/index.html)
 
 The code for doing it might look something like this :
@@ -116,7 +114,7 @@ You can also produce a `gmt` and `pcfile` of your own from the clustering soluti
     cl_gmtname , cl_pcname = reformat_results_and_print_gmtfile_pcfile ( header_str , hierarchy_id = 'cids.max', hierarchy_level_label = 'HCLN' )
 ```
 For group factor enrichments simply use the `bEnriched.from_multivariate_group_factors` method instead. This will produce results that can be visualised like this:
-[biocartograph gfa reactome enrichment](https://rictjo.github.io/?https://gist.githubusercontent.com/rictjo/42ec85df088a0c40de339a78322594bd/raw/0725bea467b0c153298655e3a0555670a812e80f/index.html) or the [cluster label gfa enrichments](https://rictjo.github.io/?https://gist.githubusercontent.com/rictjo/5d83a85537839232f34edccde1cdc8e6/raw/40c49013a55213405a6b6609f9ab31c883668d5d/index.html)
+[biocartograph gfa Reactome enrichment](https://rictjo.github.io/?https://gist.githubusercontent.com/rictjo/42ec85df088a0c40de339a78322594bd/raw/0725bea467b0c153298655e3a0555670a812e80f/index.html) or the [cluster label gfa enrichments](https://rictjo.github.io/?https://gist.githubusercontent.com/rictjo/5d83a85537839232f34edccde1cdc8e6/raw/40c49013a55213405a6b6609f9ab31c883668d5d/index.html)
 
 # Creating a nested file structure
 There is a function within the `biocartograph` package that can be used to package your generated results into a more easily parsed directory. This function can be called via :
