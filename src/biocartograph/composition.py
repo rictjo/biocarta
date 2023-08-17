@@ -21,7 +21,7 @@ def calculate_compositions ( adf:pd.DataFrame , jdf:pd.DataFrame , label:str, bA
     composition_df      = cdf.T.apply(compositional_analysis).T
     composition_df .columns = ['Beta','Tau','Gini','Geni','TSI','FILLING']
     max_quant_df        = cdf.T.apply(lambda x: x.index.values[np.argmax(x)] )
-    composition_df .loc[ max_quant_df.index.values , 'Leading Quantification Label' ] = max_quant_df.values
+    composition_df .loc[ : , 'Leading Quantification Label' ] = max_quant_df.values.tolist()
     if bAddPies :
         from impetuous.quantification import composition_piechart
         fractions_df    = composition_piechart( cdf )

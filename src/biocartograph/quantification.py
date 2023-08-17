@@ -177,6 +177,10 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
         print ( "INFORMATION : \t WARNINGS ISSUED AFTER THIS MESSAGE MEANS THAT SOME ITEMS WITH ZERO STANDARD DEVIATION WERE DROPPED\nBEGIN")
     adf = adf.iloc[ np.inf != np.abs( 1.0/np.std(adf.values,1) ) ,
                     np.inf != np.abs( 1.0/np.std(adf.values,0) ) ].copy().apply(pd.to_numeric)
+    if not len(adf) == len(set(adf.index.values)) :
+        print ( "WARNING: YOU ARE NOT USING UNIQUE INDEXING NAMES FOR YOUR ANALYTES" )
+    if not len(adf.T) == len(set(adf.columns.values)) :
+        print ( "WARNING: YOU ARE NOT USING UNIQUE COLUMN NAMES FOR YOUR ANALYTES" )
     if bVerbose :
         print ( "END")
     #
@@ -195,6 +199,10 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
     if not bQN is None :
         adf = biox.quantile_class_normalisation ( adf , axis=bQN )
     jdf = jdf.loc [ :,adf.columns.values.tolist() ].copy()
+    if not len(jdf) == len(set(jdf.index.values)) :
+        print ( "WARNING: YOU ARE NOT USING UNIQUE INDEXING NAMES FOR YOUR JOURNAL ENTRIES" )
+    if not len(jdf.T) == len(set(jdf.columns.values)) :
+        print ( "WARNING: YOU ARE NOT USING UNIQUE COLUMN NAMES FOR YOUR ANALYTES" )
     #
     n_neighbors		= umap_n_neighbors
     local_connectivity	= umap_local_connectivity

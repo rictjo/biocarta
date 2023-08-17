@@ -14,9 +14,11 @@ import numpy as np
 import pandas as pd
 import umap
 
-from impetuous.quantification import single_fc_compare
-from impetuous.special import unpack
-from impetuous.quantification import spearmanrho , pearsonrho , tjornhammarrho, correlation_core
+from impetuous.quantification	import single_fc_compare
+from impetuous.clustering	import approximate_auc
+from impetuous.special		import unpack
+from impetuous.convert		import read_rds , write_rds
+from impetuous.quantification	import spearmanrho , pearsonrho , tjornhammarrho, correlation_core
 
 clean_label = lambda x : x.replace(' ','_').replace('/','Or').replace('\\','').replace('-','')
 
@@ -51,7 +53,7 @@ def print_gmt_pc_file_format ( ) :
         'A pc file is a parent child list containing only a single parent and a single child',
         'delimited by a tab on each line so that the format, for each line, can be understood ',
         'in the following way :' ,
-        'PAREN_GROUP_ID TAB CHILD_GROUP_ID','or:',
+        'PARENT_GROUP_ID TAB CHILD_GROUP_ID','or:',
         'PROTF010\tPROTF001',
         ''
     ]
@@ -482,7 +484,7 @@ def simple_membership_inference( header_str:str ) :
         dfmc .columns = cs
         dfmc = ( dfmc.T / np.sum(dfmc,1) ) .T
         #
-        df_ = pd.DataFrame( [ q for q in zip( dfmc.values.reshape(-1) ,
+        df_  = pd.DataFrame( [ q for q in zip( dfmc.values.reshape(-1) ,
                 [ v for w in dfmc.index.values for v in dfmc.columns.values ] ,
                 [ w for w in dfmc.index.values for v in dfmc.columns.values ] ) ] )
         df_ .index      = df_.iloc[:,-1]
@@ -493,6 +495,57 @@ def simple_membership_inference( header_str:str ) :
         df_ = df_.sort_values('nclust').loc[:,['membership','cluster']]
         df_ .to_csv( header_str[:-1] + '/clustering/cluster_memberships.tsv',sep='\t')
 
+def coexpression_distance_matrix (	coordinates_file:str , coordinate_label:str = 'PCA' ,
+                                        pathfile:str = None ,
+					path:str = './' , filename:str = 'distances.tsv.gz' , sep='\t' ) :
+    if pathfile is None :
+        pathfile = path+filename
+    try :
+        Ddf	= pd.read_csv( pathfile , sep = sep , compression = 'infer' , index_col = 0 )
+        D	= Ddf.values
+    except :
+        print ( "WRITING A COVARIATION BASED DISTANCE MATRIX" )
+        cdf         = pd.read_csv( coordinates_file , sep=',' , index_col=0 )
+        cdf         = cdf.iloc[:,[ coordinate_label in c for c in cdf.columns ] ]
+        from scipy.spatial.distance import pdist , squareform
+        D = squareform ( pdist( cdf.values ) )
+        Ddf = pd.DataFrame ( D , columns = cdf.index.values ,
+                        index = cdf.index.values )
+        Ddf .to_csv( pathfile , sep = sep , compression = 'infer' )
+    return ( D )
+#
+def append_comprehensive_cluster_information ( header_str:str ,
+                        cluster_file:str                = "clustering/final_consensus.tsv" ,
+                        neighbor_file:str               = "distance/nearest_neighbors.tsv" ,
+                        distance_matrix:np.array        = None , fraction:float=0.1 ,
+                        bVerbose:bool                   = True ) :
+
+    from impetuous.clustering	import complete_happiness , complete_immersiveness
+    from scipy.spatial.distance	import squareform
+
+    ldf         = pd.read_csv( header_str + cluster_file  , sep='\t' , index_col=0)
+    ndf         = pd.read_csv( header_str + neighbor_file , sep='\t' )
+    cost        = header_str + "clustering/cluster_comprehensiveness.tsv"
+    #
+    happ = complete_happiness( ldf , ndf )
+    if bVerbose :
+        print ( happ )
+    ldf .loc[ : ,    'happiness' ] = happ
+    ldf .to_csv( cost , sep='\t' )
+    if distance_matrix is None :
+        return
+    nm = np.shape( distance_matrix )
+    if nm[0] != len(ldf) :
+        print ( "ERROR COULD NOT CALCULATE IMMERSIVE STATS DUE TO MALFORMED DISTANCE MATRIX" )
+        exit(1)
+    ci_ = complete_immersiveness ( ldf.iloc[:,0].values.tolist() , distance_matrix , fraction=fraction )
+    if bVerbose :
+        print ( ci_ )
+    ldf .loc[ : , 'immersiveness' ]     = [ c[0] for c in ci_ ]
+    ldf .loc[ : , 'SE(immersiveness)']  = [ c[1] for c in ci_ ]
+    ldf .to_csv( cost , sep='\t' )
+
+
 def generate_atlas_files ( header_str:str ,
                 fcfile:str = 'clustering/final_consensus.tsv' ,
 		nnfile:str = 'distance/nearest_neighbors.tsv' ,
@@ -500,10 +553,11 @@ def generate_atlas_files ( header_str:str ,
                 ccfile:str = 'UMAP/cluster_centers.tsv' ,
 		pofile:str = 'UMAP/UMAP_polygons.tsv' ,
                 anfile:str = 'enrichment/cluster_annotations.tsv',
+                difile:str = 'distance/distances.tsv.gz' ,
                 pcadir:str = 'PCA/',
                 evadir:str = 'evaluation/',
                 enrichment_results_file_pattern:list[str] = ["(HEADER)treemap_c(CLUSTID).tsv"] ,
-                nNN:int=20 ,
+                nNN:int=20 , bConcise:bool = False , fraction:float=0.1 ,
                 additional_directories:list[str] = ['data','enrichment','evaluation','graph','PCA','UMAP',
 					'svg'  , 'svg/heatmap','svg/bubble','svg/treemap','svg/fountain',
                                         'html' , 'html']) :
@@ -600,6 +654,19 @@ def generate_atlas_files ( header_str:str ,
     an_df	.to_csv( hdir_str + anfile , sep='\t' )
     #
     simple_membership_inference( header_str )
+    #
+    if not bConcise :
+        print ( "DONE : NOW WE CREATE SOME ADDITIONAL BENCHMARKS FOR THE ANALYTES" )
+        print ( "YOU CAN SKIP THIS BY SETTING bConcise=True IN THE generate_atlas_files ROUTINE" )
+        D = coexpression_distance_matrix ( header_str + 'pcas_df.tsv' , coordinate_label = 'PCA' ,
+                                           pathfile = hdir_str + difile , sep='\t' )
+        print ( "WROTE SUPPORTING COEXPRESSION DISTANCE MATRIX" )
+        #
+        append_comprehensive_cluster_information ( hdir_str ,
+                        cluster_file			= fcfile ,
+                        neighbor_file			= nnfile , fraction=fraction ,
+                        distance_matrix			= D , bVerbose=False )
+        print ( "PRODUCED AUC AND HAPPINESS FOR ALL!" )
 
 if __name__ == '__main__' :
     #
@@ -610,9 +677,3 @@ if __name__ == '__main__' :
     header_str  = results_dir + 'DMHMSY_Wed_May__3_11_48_58_2023_'
     #
     generate_atlas_files ( header_str = header_str )
-    """ ,
-                nnfile = 'distance/nearest_neighbors.tsv' ,
-                ccfile = 'UMAP/cluster_centers.tsv' ,
-                pofile = 'UMAP/UMAP_polygons.tsv' )
-    """
-    #
