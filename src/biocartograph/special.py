@@ -505,7 +505,7 @@ def coexpression_distance_matrix (	coordinates_file:str , coordinate_label:str =
         D	= Ddf.values
     except :
         print ( "WRITING A COVARIATION BASED DISTANCE MATRIX" )
-        cdf         = pd.read_csv( coordinates_file , sep=',' , index_col=0 )
+        cdf         = pd.read_csv( coordinates_file , sep=sep , index_col=0 )
         cdf         = cdf.iloc[:,[ coordinate_label in c for c in cdf.columns ] ]
         from scipy.spatial.distance import pdist , squareform
         D = squareform ( pdist( cdf.values ) )
