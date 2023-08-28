@@ -14,10 +14,36 @@ import numpy  as np
 import pandas as pd
 import typing
 
-from impetuous.quantification import composition_absolute, compositional_analysis
+from collections import Counter
 
-def calculate_compositions ( adf:pd.DataFrame , jdf:pd.DataFrame , label:str, bAddPies:bool=True ) -> pd.DataFrame :
-    cdf                 = composition_absolute ( adf=adf , jdf=jdf , label=label )
+from impetuous.quantification import composition_absolute, compositional_analysis
+#
+def calculate_compositions (	adf:pd.DataFrame , jdf:pd.DataFrame , label:str,
+				bAddPies:bool=True, composition_type:str = 'absolute' ) -> pd.DataFrame :
+    cdf = None
+    if composition_type == 'absolute'	:
+        cdf                 = composition_absolute ( adf=adf , jdf=jdf , label=label )
+    if composition_type == 'normed'	:
+        cdf		= composition_absolute ( adf=adf.apply(lambda x:x/np.sum(x) ) , jdf=jdf , label=label )
+    if composition_type == 'scaled' or composition_type=='fractional' :
+        c2l             = Counter(jdf.loc[label])
+        number_freq     = np.array( [ c2l[l] for l in jdf.loc[label] ] )
+        if composition_type == 'scaled' :
+            cdf             = composition_absolute ( adf=adf*number_freq , jdf=jdf , label=label )
+        if composition_type == 'fractional' :
+            cdf             = composition_absolute ( adf=adf/number_freq , jdf=jdf , label=label )
+    if composition_type == 'equalized'	:
+        print ('WARNING : HISTOGRAM EQUALIZING COMPOSITIONS' )
+        from scipy.stats import rankdata
+        def h_eq ( x ) :
+            rx = rankdata ( x , 'average' )
+            mx = np.max( rx )
+            return ( rx / mx )
+        cdf                 = composition_absolute ( adf=adf.apply(lambda x: h_eq(x)) , jdf=jdf , label=label )
+    if cdf is None :
+        print ( 'ASSIGNING ABSOLUTE COMPOSITIONS' )
+        cdf                 = composition_absolute ( adf=adf , jdf=jdf , label=label )
+    #
     composition_df      = cdf.T.apply(compositional_analysis).T
     composition_df .columns = ['Beta','Tau','Gini','Geni','TSI','FILLING']
     max_quant_df        = cdf.T.apply(lambda x: x.index.values[np.argmax(x)] )
@@ -27,7 +53,6 @@ def calculate_compositions ( adf:pd.DataFrame , jdf:pd.DataFrame , label:str, bA
         fractions_df    = composition_piechart( cdf )
         return ( pd.concat( [composition_df.T, fractions_df]).T )
     return ( composition_df )
-
 
 def composition_leading_label_and_metric ( composition:dict , metric:int = 1 ) -> dict :
     items = list(composition.items())

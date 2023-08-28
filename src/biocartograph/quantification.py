@@ -129,8 +129,8 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
         Sfunc = lambda x:np.mean(x,0) , bAddPies:bool=False , bUseTDA:bool = False ,
         consensus_function = lambda x:np.sum(x) , consensus_labels:list[str] = None , bDisbandAggregation:bool = True ,
         bUseGeometricallyCenteredZvalues:bool = False , EPLSformula:str=None ,
-        contraction_quantile:float = None   ,
-        contraction_depth:float    = None   ) -> tuple[pd.DataFrame] :
+        contraction_quantile:float = None   , contraction_depth:float = None ,
+	composition_type:str = 'absolute'  ) -> tuple[pd.DataFrame] :
     #
     import biocartograph.special	as biox
     import biocartograph.composition	as bioc
@@ -162,7 +162,7 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
         'Sfunc':Sfunc , 'bAddPies:bool':bAddPies , 'bUseTDA:bool':bUseTDA , 'bAuxConsensusPCA:bool':bAuxConsensusPCA ,
         'consensus_function':consensus_function , 'consensus_labels:list[str]' : consensus_labels , 'bDisbandAggregation:bool' : bDisbandAggregation ,
         'bUseGeometricallyCenteredZvalues:bool' : bUseGeometricallyCenteredZvalues , 'EPLSformula:str':EPLSformula ,
-	'contraction_quantile:float': contraction_quantile , 'contraction_depth:float': contraction_depth }
+	'contraction_quantile:float': contraction_quantile , 'contraction_depth:float': contraction_depth , 'composition_type:str' : composition_type }
             ofile = open ( header_str + runinfo_file , 'w' )
             for item in run_dict.items():
                 if 'list' in str(type(item[1])):
@@ -189,7 +189,8 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
         if not ( alignment_label is None ) :
             if bVerbose :
                 print ( "CONDUCTING COMPOSITIONAL ANALYSIS" )
-            comp_df = bioc.calculate_compositions ( adf , jdf, label = alignment_label , bAddPies=bAddPies )
+            comp_df = bioc.calculate_compositions ( adf , jdf, label = alignment_label ,
+					bAddPies = bAddPies , composition_type = composition_type )
             comp_df.columns = [ alignment_label +'.'+ c for c in comp_df.columns.values ]
             if bVerbose :
                 print (  'FINISHED RESULTS > ' , 'composition.tsv' )
