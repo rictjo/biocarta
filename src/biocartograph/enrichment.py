@@ -228,6 +228,38 @@ def auto_annotate_clusters (	header_str:str = '../results/DMHMSY_Fri_Jun__2_09_1
     return ( auto_annotated_df )
 
 
+def benchmark_group_volcano_metrics ( group_df:pd.DataFrame , journal_df:pd.DataFrame ,
+                        major_group_label:str = None , what_thing:str = None , bRanked:bool=False ,
+                        nsamples:int = None, bVerbose:bool = False , bgname:str = 'Background' ,
+                        clean_label = lambda x : x.replace(' ','_').replace('/','Or').replace('\\','').replace('-','') ) -> pd.DataFrame :
+
+    from biocartograph.special import calculate_volcano_df
+    from impetuous.quantification import qvalues
+    df          = group_df
+    if major_group_label is None :
+        print ( "WARNING CANNOT CONTINUE. NEED major_group_label" )
+        exit(1)
+    jdf         = journal_df.loc[ major_group_label , : ]
+    check_cols  = journal_df.columns.values.tolist()
+    if not what_thing is None :
+        lookup = { k:v for k,v in [ tuple( ( col , what_thing if clean_label(what_thing) in clean_label(label) else bgname )) for label,col in zip( jdf.values
+,jdf.index.values) ] }
+    else :
+        print ( "WARNING CANNOT CONTINUE. NEED what_thing" )
+        exit(1)
+    vals_df     = df.loc[:,check_cols].apply(pd.to_numeric).dropna(axis=1)
+    vals_df .loc['Regulation']  = [ lookup[c] for c in vals_df.columns.values ]
+    fc_levels  = list( set(vals_df .loc['Regulation'])-set([bgname]) )
+    fc_levels  .append( bgname )
+    if len ( fc_levels ) != 2 :
+        print ( "WARNING NOT WELL DEFINED TEST", fc_levels )
+        exit(1)
+    volcano_df = calculate_volcano_df ( vals_df , levels = fc_levels , what = 'Regulation' , bLog2 = True , bRanked = bRanked )
+    volcano_df .loc[:,'id']             = df.index.values
+    volcano_df .loc[:,'q-value']	= [ q[0] for q in qvalues( volcano_df.loc[:,'p-value'].values ) ]
+    return ( volcano_df )
+
+
 def benchmark_group_expression_with_univariate_foldchange ( group_df:pd.DataFrame , journal_df:pd.DataFrame ,
                         major_group_label:str = None , what_thing:str = None , bRanked:bool=False ,
 			nsamples:int = None, bVerbose:bool = False , bgname:str = 'Background' ,
