@@ -257,6 +257,7 @@ def benchmark_group_volcano_metrics ( group_df:pd.DataFrame , journal_df:pd.Data
     volcano_df = calculate_volcano_df ( vals_df , levels = fc_levels , what = 'Regulation' , bLog2 = True , bRanked = bRanked )
     volcano_df .loc[:,'id']             = df.index.values
     volcano_df .loc[:,'q-value']	= [ q[0] for q in qvalues( volcano_df.loc[:,'p-value'].values ) ]
+    volcano_df .loc[:,'-log10 q-value'] = [ -1*np.log10(v) for v in vdf.loc[:,'q-value'].values ]
     return ( volcano_df )
 
 
