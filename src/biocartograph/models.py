@@ -120,7 +120,6 @@ class DjungleClassifier ( object ) :
         elif 'array' in str(type(X)).lower() and not self.array_order_ is None and len(nm)>1 :
             X = X[ self.array_order_ ,: ]
         if len( nm ) > 1 :
-            print ( pd.DataFrame(X) )
             return ( [ self.predict(x_)[0] for x_ in X.T ] )
         else : # np.reshape( np.array([1, 2, 3, 4, 5, 6, 7, 8, 9]) ,newshape=(3,3) )
             xvs_ = self.synthesize( X.reshape(-1,1) ).reshape(1,-1)
