@@ -346,7 +346,7 @@ def generate_hulls ( df:pd.DataFrame , gid:str = 'cids.max' , hid:str='UMAP.' ,
     #
     if cid is None :
         cid = hid
-    selection = sorted( list( set([ c for c in df.columns if hid in c or c in gid ]) - set([gid]) ) )
+    selection = sorted( list( set([ c for c in df.columns if hid in c or gid in c ]) - set([gid]) ) )
     selection .append(gid)
     projection_crds = sorted( list( set([ c for c in df.columns if cid in c ])  ) )
     if not xid is None :
