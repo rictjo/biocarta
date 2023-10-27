@@ -15,6 +15,8 @@ import numpy    as np
 import kmapper  as km # GENERAL TDA TOOLBOX
 import umap
 
+from scipy.spatial.distance     import pdist , squareform
+
 import impetuous.quantification as impq
 import impetuous.clustering     as impc
 
@@ -128,20 +130,21 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
         epls_ownership:str = 'angle' , bNonEuclideanBackprojection:bool = False ,
         Sfunc = lambda x:np.mean(x,0) , bAddPies:bool=False , bUseTDA:bool = False ,
         consensus_function = lambda x:np.sum(x) , consensus_labels:list[str] = None , bDisbandAggregation:bool = True ,
-        bUseGeometricallyCenteredZvalues:bool = False , EPLSformula:str=None ,
-        contraction_quantile:float = None   , contraction_depth:float = None ,
-	composition_type:str = 'absolute'  ) -> tuple[pd.DataFrame] :
+        bUseGeometricallyCenteredZvalues:bool = False , EPLSformula:str=None , bAddAnnotationDistanceMatrix:bool  = False ,
+        contraction_quantile:float = None   , contraction_depth:float = None , bAddCompositionDistanceMatrix:bool = False ,
+	composition_type:str = 'absolute'   , connectome_lambda_function = None ) -> tuple[pd.DataFrame] :
     #
     import biocartograph.special	as biox
     import biocartograph.composition	as bioc
     #
+    header_str = 'DMHMSY_' + time.ctime().replace(':','_').replace(' ','_') + '_'
     if bVerbose :
         print ( "TO DISABLE WRITING OF RESULTS TO", directory )
         print ( "SET THE directory=None " )
         print ( "TO MAKE BIOCARTOGRAPH QUIET SET bVerbose=False" )
         import time
-        header_str = 'YMDHMS_' + '_'.join( list( str(t) for t in time.gmtime())[:-3] )+'_'
-        header_str = 'DMHMSY_' + time.ctime().replace(':','_').replace(' ','_') + '_'
+        #header_str = 'YMDHMS_' + '_'.join( list( str(t) for t in time.gmtime())[:-3] )+'_'
+        #header_str = 'DMHMSY_' + time.ctime().replace(':','_').replace(' ','_') + '_'
         if not directory is None :
             if not directory[-1] == '/' :
                 directory = directory + '/'
@@ -162,7 +165,9 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
         'Sfunc':Sfunc , 'bAddPies:bool':bAddPies , 'bUseTDA:bool':bUseTDA , 'bAuxConsensusPCA:bool':bAuxConsensusPCA ,
         'consensus_function':consensus_function , 'consensus_labels:list[str]' : consensus_labels , 'bDisbandAggregation:bool' : bDisbandAggregation ,
         'bUseGeometricallyCenteredZvalues:bool' : bUseGeometricallyCenteredZvalues , 'EPLSformula:str':EPLSformula ,
-	'contraction_quantile:float': contraction_quantile , 'contraction_depth:float': contraction_depth , 'composition_type:str' : composition_type }
+        'bAddAnnotationDistanceMatrix:bool' : bAddAnnotationDistanceMatrix ,  'bAddCompositionDistanceMatrix:bool' : bAddCompositionDistanceMatrix ,
+	'contraction_quantile:float': contraction_quantile , 'contraction_depth:float': contraction_depth , 'composition_type:str' : composition_type,
+	'connectome_lambda_function': connectome_lambda_function }
             ofile = open ( header_str + runinfo_file , 'w' )
             for item in run_dict.items():
                 if 'list' in str(type(item[1])):
@@ -184,14 +189,32 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
     if bVerbose :
         print ( "END")
     #
+    bConnectome = False
     comp_df = None
+    c_DM = None
     if not jdf is None :
         if not ( alignment_label is None ) :
+            if bAddCompositionDistanceMatrix :
+                print ( 'WILL ADD COMPOSITION GROUP DISTANCES' )
+                bConnectome = True
+                bAddPies    = True
             if bVerbose :
                 print ( "CONDUCTING COMPOSITIONAL ANALYSIS" )
             comp_df = bioc.calculate_compositions ( adf , jdf, label = alignment_label ,
 					bAddPies = bAddPies , composition_type = composition_type )
-            comp_df.columns = [ alignment_label +'.'+ c for c in comp_df.columns.values ]
+            comp_df .columns = [ alignment_label +'.'+ c for c in comp_df.columns.values ]
+            if bAddCompositionDistanceMatrix :
+                print ( 'ADDING COMPOSITION GROUP DISTANCES' )
+                bConnectome = True
+                useful	= set( jdf.loc[alignment_label].values.tolist() )
+                c_DM	= squareform( pdist( comp_df.loc[:,[c for c in comp_df.columns if c.split('.')[-1] in useful]].apply(pd.to_numeric).values ,
+					'euclidean' )	)
+                cnm	= c_DM.shape
+                if connectome_lambda_function is None :
+                    c_DM = c_DM / np.max( c_DM.reshape(-1) ) # MINMAX SCALING
+                else :
+                    c_DM = connectome_lambda_function(c_DM.reshape(-1) ).reshape(cnm)
+
             if bVerbose :
                 print (  'FINISHED RESULTS > ' , 'composition.tsv' )
             if not directory is None:
@@ -205,6 +228,76 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
     if not len(jdf.T) == len(set(jdf.columns.values)) :
         print ( "WARNING: YOU ARE NOT USING UNIQUE COLUMN NAMES FOR YOUR ANALYTES" )
     #
+    pcas_df , pcaw_df , eres = None , None , None
+    a_DM = None
+    if not jdf is None :
+        if not ( alignment_label is None ) :
+            if bVerbose :
+                print ( "MULTIVAR ALIGNED PCA", alignment_label ) # ALWAYS ON ALIGNMENT LABEL
+            from impetuous.quantification import multivariate_aligned_pca
+            if sample_label is None :
+                jdf.loc['samplenames'] = jdf.columns.values
+                sample_label = 'samplenames'
+            pcas_df , pcaw_df = multivariate_aligned_pca ( adf , jdf ,
+                    sample_label = sample_label , align_to = alignment_label ,
+                    n_components = n_components , add_labels = add_labels )
+            print ( 'DONE' )
+            aux_labels = list( set( consensus_labels ) - set([alignment_label]) )
+            if bAuxConsensusPCA :
+                print ( 'MUTLIVAR AUX ALIGNED PCA: ' , aux_labels  )
+                for a_label in aux_labels :
+                    tmp_pcas_df , tmp_pcaw_df = multivariate_aligned_pca ( adf , jdf ,
+                        sample_label = sample_label , align_to = a_label ,
+                        n_components = n_components , add_labels = add_labels )
+                    tpsdf = tmp_pcas_df.loc[ : , [ c for c in tmp_pcas_df.columns if not 'PCA' in c ] ]
+                    tpsdf .columns = [ 'AUX.'+a_label+'.'+c for c in tpsdf.columns ]
+                    tpwdf = tmp_pcaw_df.loc[ : , [ c for c in tmp_pcaw_df.columns if not 'PCA' in c ] ]
+                    tpwdf.columns = [ 'AUX.'+a_label+'.'+c for c in tpwdf.columns ]
+                    pcas_df = pd.concat([ pcas_df.T, tpsdf.T ]).T
+                    pcaw_df = pd.concat([ pcaw_df.T, tpwdf.T ]).T
+            #
+            if bVerbose :
+                print ( "ENCODED PLS REGRESSION" )
+            from impetuous.quantification import run_rpls_regression as epls
+            #
+            L_ = 'abcdefghijklmnopqrstuvwxyz'.upper()
+            idx_rename = None # CREATES AN ACRONYM
+            if EPLSformula is None :
+                formula = "Expression~"
+                epls_labels = [ alignment_label ]
+                idx_rename = { epls_labels[i_] : L_[i_] + "L0xXx" for i_ in range(len( epls_labels )) }
+                for c in idx_rename.values() :
+                    formula +='C('+c+')+'
+                formula = formula[:-1]
+            else :
+                formula = EPLSformula
+            jdf = jdf.rename( index = idx_rename )
+            print ( 'EPLS:', formula )
+            res = epls ( analyte_df=adf, journal_df=jdf , formula = formula , owner_by = epls_ownership )
+            if not idx_rename is None :
+                jdf = jdf.rename( index = {v:k for (k,v) in idx_rename.items() } )
+            res[0] .columns = [ 'EPLS.' + v for v in res[0].columns.values ]
+            res[1] .columns = [ 'EPLS.' + v for v in res[1].columns.values ]
+            if bAddAnnotationDistanceMatrix :
+                annotation_df = pd.concat( [pcas_df.T , res[0].T]).T
+                annotation_df = annotation_df.loc[ : , [ c for c in annotation_df.columns if 'owner' in c.lower() ]]
+                print ( 'ADDING ANNOTATION GROUP DISTANCES' )
+                sann = set( annotation_df.values.reshape(-1).tolist() )
+                annot_lookup = { s:i+1 for (s,i) in zip( list(sann) , range(len(list(sann))) ) }
+                vals = np.array([ annot_lookup[v] for v in annotation_df.values.reshape(-1) ]).reshape( annotation_df.values.shape )
+                JD = pdist(vals,'jaccard')
+                bConnectome = True
+                a_DM = squareform(np.array(JD))
+
+            if bVerbose :
+                print ( 'FINISHED ANNOTATION RESULTS > ', 'pcas_df.tsv,', 'pcaw_df.tsv,', 'epls_f.tsv,' , 'epls_s.tsv' )
+            if not directory is None:
+                pcas_df .to_csv ( header_str + 'pcas_df.tsv', sep='\t' )
+                pcaw_df .to_csv ( header_str + 'pcaw_df.tsv', sep='\t' )
+                res[ 0 ].to_csv ( header_str + 'epls_f.tsv' , sep='\t' )
+                res[ 1 ].to_csv ( header_str + 'epls_s.tsv' , sep='\t' )
+            eres = res
+
     n_neighbors		= umap_n_neighbors
     local_connectivity	= umap_local_connectivity
     transform_seed	= umap_seed
@@ -272,6 +365,24 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
     #
     distm_features = distance_calculation ( input_values_f , distance_type ,
                          bRemoveCurse = bRemoveCurse_ , nRound = nRound_ )
+    if bConnectome :
+        nD = 1.0
+        d_DM = distm_features
+        dnm_ = d_DM.shape
+        if connectome_lambda_function is None :
+            d_DM = d_DM / np.max( d_DM.reshape(-1) ) # MINMAX SCALING
+        else :
+            d_DM = connectome_lambda_function(d_DM.reshape(-1) ).reshape(dnm_)
+        if bAddCompositionDistanceMatrix :
+            nD   += 1.0
+            d_DM += c_DM;
+        if bAddAnnotationDistanceMatrix  :
+            nD   += 1.0
+            d_DM += a_DM;
+        distm_features = d_DM/nD
+    #
+    if bVerbose :
+        print ('DRAWING MAP')
     #
     if not nNeighborFilter is None :
         # LEAVE THIS OUT IT IS CRAP
@@ -295,7 +406,7 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
                      Sfunc = Sfunc , bUseTDA = bUseTDA ,
                      contraction_quantile = contraction_quantile , contraction_depth=contraction_depth )
     if bVerbose :
-        print ( 'FINISHED RESULTS > ', 'resdf_f.tsv , soldf_f.tsv , hierarch_f.tsv' )
+        print ( 'FINISHED RESULTS MAP > ', 'resdf_f.tsv,' , 'soldf_f.tsv,' , 'hierarch_f.tsv' )
     if not directory is None:
         resdf_f .index.name = header_str
         resdf_f .to_csv( header_str + 'resdf_f.tsv' , sep='\t' )
@@ -323,72 +434,18 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
                      bNonEuclideanBackprojection = bNonEuclideanBackprojection ,
                      Sfunc = Sfunc , bUseTDA = bUseTDA ,
                      contraction_quantile = contraction_quantile , contraction_depth=contraction_depth )
+
+    if not ( pcas_df is None or pcaw_df is None or eres is None ) :
+        resdf_f = pd.concat( [resdf_f.T, pcas_df.T , res[0].T , comp_df.T ] ).T
+        resdf_s = pd.concat( [resdf_s.T, pcaw_df.T , res[1].T ] ).T
     #
     if bVerbose :
-        print ( 'FINISHED RESULTS > ', 'resdf_s.tsv , soldf_s.tsv , hierarch_s.tsv' )
+        print ( 'FINISHED MAP RESULTS > ', 'resdf_s.tsv , soldf_s.tsv , hierarch_s.tsv' )
     if not directory is None :
         resdf_s .to_csv( header_str + 'resdf_s.tsv',sep='\t' )
         soldf_s .to_csv( header_str + 'soldf_s.tsv',sep='\t' )
         hierarch_s_df.to_csv( header_str + 'hierarch_s.tsv' , sep='\t' )
     #
-    pcas_df , pcaw_df = None , None
-    if not jdf is None :
-        if not ( alignment_label is None ) :
-            if bVerbose :
-                print ( "MULTIVAR ALIGNED PCA", alignment_label ) # ALWAYS ON ALIGNMENT LABEL
-            from impetuous.quantification import multivariate_aligned_pca
-            if sample_label is None :
-                jdf.loc['samplenames'] = jdf.columns.values
-                sample_label = 'samplenames'
-            pcas_df , pcaw_df = multivariate_aligned_pca ( adf , jdf ,
-                    sample_label = sample_label , align_to = alignment_label ,
-                    n_components = n_components , add_labels = add_labels )
-            print ( 'DONE' )
-            aux_labels = list( set( consensus_labels ) - set([alignment_label]) )
-            if bAuxConsensusPCA :
-                print ( 'MUTLIVAR AUX ALIGNED PCA: ' , aux_labels  )
-                for a_label in aux_labels :
-                    tmp_pcas_df , tmp_pcaw_df = multivariate_aligned_pca ( adf , jdf ,
-                        sample_label = sample_label , align_to = a_label ,
-                        n_components = n_components , add_labels = add_labels )
-                    tpsdf = tmp_pcas_df.loc[ : , [ c for c in tmp_pcas_df.columns if not 'PCA' in c ] ]
-                    tpsdf .columns = [ 'AUX.'+a_label+'.'+c for c in tpsdf.columns ]
-                    tpwdf = tmp_pcaw_df.loc[ : , [ c for c in tmp_pcaw_df.columns if not 'PCA' in c ] ]
-                    tpwdf.columns = [ 'AUX.'+a_label+'.'+c for c in tpwdf.columns ]
-                    pcas_df = pd.concat([ pcas_df.T, tpsdf.T ]).T
-                    pcaw_df = pd.concat([ pcaw_df.T, tpwdf.T ]).T
-            #
-            if bVerbose :
-                print ( "ENCODED PLS REGRESSION" )
-            from impetuous.quantification import run_rpls_regression as epls
-            #
-            L_ = 'abcdefghijklmnopqrstuvwxyz'.upper()
-            idx_rename = None # CREATES AN ACRONYM
-            if EPLSformula is None :
-                formula = "Expression~"
-                epls_labels = [ alignment_label ]
-                idx_rename = { epls_labels[i_] : L_[i_] + "L0xXx" for i_ in range(len( epls_labels )) }
-                for c in idx_rename.values() :
-                    formula +='C('+c+')+'
-                formula = formula[:-1]
-            else :
-                formula = EPLSformula
-            jdf = jdf.rename( index = idx_rename )
-            print ( 'EPLS:', formula )
-            res = epls ( analyte_df=adf, journal_df=jdf , formula = formula , owner_by = epls_ownership )
-            if not idx_rename is None :
-                jdf = jdf.rename( index = {v:k for (k,v) in idx_rename.items() } )
-            res[0] .columns = [ 'EPLS.' + v for v in res[0].columns.values ]
-            res[1] .columns = [ 'EPLS.' + v for v in res[1].columns.values ]
-            if bVerbose :
-                print ( 'FINISHED RESULTS > ', 'pcas_df.tsv', 'pcaw_df.tsv', 'epls_f.tsv' , 'epls_s.tsv' )
-            if not directory is None:
-                pcas_df .to_csv ( header_str + 'pcas_df.tsv', sep='\t' )
-                pcaw_df .to_csv ( header_str + 'pcaw_df.tsv', sep='\t' )
-                res[ 0 ].to_csv ( header_str + 'epls_f.tsv' , sep='\t' )
-                res[ 1 ].to_csv ( header_str + 'epls_s.tsv' , sep='\t' )
-            resdf_f = pd.concat( [resdf_f.T, pcas_df.T , res[0].T , comp_df.T ] ).T
-            resdf_s = pd.concat( [resdf_s.T, pcaw_df.T , res[1].T ] ).T
     if bVerbose :
         print ( 'RETURNING: ')
         print ( 'FEATURE MAP, SAMPLE MAP, FULL FEATURE HIERARCHY, FULL SAMPLE HIERARCHY' )
