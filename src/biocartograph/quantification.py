@@ -136,15 +136,13 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
     #
     import biocartograph.special	as biox
     import biocartograph.composition	as bioc
+    import time
     #
     header_str = 'DMHMSY_' + time.ctime().replace(':','_').replace(' ','_') + '_'
     if bVerbose :
         print ( "TO DISABLE WRITING OF RESULTS TO", directory )
         print ( "SET THE directory=None " )
         print ( "TO MAKE BIOCARTOGRAPH QUIET SET bVerbose=False" )
-        import time
-        #header_str = 'YMDHMS_' + '_'.join( list( str(t) for t in time.gmtime())[:-3] )+'_'
-        #header_str = 'DMHMSY_' + time.ctime().replace(':','_').replace(' ','_') + '_'
         if not directory is None :
             if not directory[-1] == '/' :
                 directory = directory + '/'
