@@ -240,8 +240,9 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
                     sample_label = sample_label , align_to = alignment_label ,
                     n_components = n_components , add_labels = add_labels )
             print ( 'DONE' )
-            aux_labels = list( set( consensus_labels ) - set([alignment_label]) )
-            if bAuxConsensusPCA :
+            if not consensus_labels is None :
+                aux_labels = list( set( consensus_labels ) - set([alignment_label]) )
+            if bAuxConsensusPCA and not consensus_labels is None :
                 print ( 'MUTLIVAR AUX ALIGNED PCA: ' , aux_labels  )
                 for a_label in aux_labels :
                     tmp_pcas_df , tmp_pcaw_df = multivariate_aligned_pca ( adf , jdf ,
