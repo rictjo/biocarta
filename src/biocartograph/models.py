@@ -88,7 +88,7 @@ class WildDjungle ( object ) :
     def get_model_name(self)->str:
         return ( str(self.model_label_) + ' | ' + str(self.bg_label_) )
 
-    def fit ( self , X:np.array = None , y:np.array = None , binlabel:int = 1 , vertex_labels:list[str] = None ) :
+    def fit ( self , X:np.array = None , y:np.array = None , binlabel:int = None , vertex_labels:list[str] = None ) :
         labels = vertex_labels
         if self.bDataCompleted and (X is None or y is None) :
             ''
@@ -101,12 +101,16 @@ class WildDjungle ( object ) :
             self.data_model_df = pd.DataFrame(R)
             bDone = False
             if self.bRegressor == False :
+                if binlabel==None :
+                    self.model_label_ = None
                 if not self.model_label_ is None :
                     if self.model_label_ in set( y ) :
                         v = [ self.model_label_ if self.model_label_ in y_ else self.bg_label_ for y_ in y ]
                         bDone = True
                 if not bDone :
-                    if binlabel in set(y):
+                    if binlabel is None :
+                        v = y.reshape(-1)
+                    elif binlabel in set(y):
                         v = np.array( [ int(y_ == binlabel) for y_ in y ] )
                     else :
                         print ( 'PLEASE SPECIFY A USEFUL MDOEL LABEL USING .set_model_label(model_label:str) PRIOR TO RUNNING')
@@ -132,6 +136,7 @@ class WildDjungle ( object ) :
         else :
             nL = len( labels )
         self.edge_labels_ = [ labels[i]+':'+labels[j]  for i in range(nL) for j in range(nL) if (i<=j and i!=j) ]
+
 
     def predict_single_ (self,Y) -> list :
         xvs_ = self.synthesize( Y.reshape(-1,1) ).reshape(1,-1)
