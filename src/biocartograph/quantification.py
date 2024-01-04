@@ -20,7 +20,7 @@ from scipy.spatial.distance     import pdist , squareform
 import impetuous.quantification as impq
 import impetuous.clustering     as impc
 
-from impetuous.quantification	import distance_calculation
+from impetuous.quantification	import distance_calculation, spearmanrho, pearsonrho, associativity
 from impetuous.clustering	import generate_clustering_labels
 from impetuous.clustering	import distance_matrix_to_absolute_coordinates
 
@@ -212,7 +212,6 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
                     c_DM = c_DM / np.max( c_DM.reshape(-1) ) # MINMAX SCALING
                 else :
                     c_DM = connectome_lambda_function(c_DM.reshape(-1) ).reshape(cnm)
-
             if bVerbose :
                 print (  'FINISHED RESULTS > ' , 'composition.tsv' )
             if not directory is None:
@@ -287,7 +286,6 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
                 JD = pdist(vals,'jaccard')
                 bConnectome = True
                 a_DM = squareform(np.array(JD))
-
             if bVerbose :
                 print ( 'FINISHED ANNOTATION RESULTS > ', 'pcas_df.tsv,', 'pcaw_df.tsv,', 'epls_f.tsv,' , 'epls_s.tsv' )
             if not directory is None:
@@ -303,6 +301,10 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
     cmd			= hierarchy_cmd
     bRemoveCurse_	= bRemoveCurse
     nRound_		= None
+    distance_type_uip	= distance_type.copy()
+    input_quant_f	= input_values.copy()
+    input_quant_s       = input_values.T.copy()
+    #
     if not n_components is None :
         m = np.min(np.shape(adf.values))
         if n_components >= m :
@@ -365,6 +367,7 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
     distm_features = distance_calculation ( input_values_f , distance_type ,
                          bRemoveCurse = bRemoveCurse_ , nRound = nRound_ )
     if bConnectome :
+        print ( 'WARNING: DEVELOPMENTAL FEATURE. \t\t\t SET IT TO bAddAnnotationDistanceMatrix=False TO BYPASS EXECUTION')
         nD = 1.0
         d_DM = distm_features
         dnm_ = d_DM.shape
@@ -393,6 +396,26 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
         distm_features = biox.symmetrize_broken_symmetry ( distm_features , method = heal_symmetry_break_method )
     if not bRemoveCurse_ :
         divergence  = lambda r : 1
+    #
+    # IF USER WANT TO APPLY SOME DISTANCE WEIGHTS TO THE FULL GRAPH THEN
+    # THAT IS DONE HERE VIA I.E.:  "covexpression * spearman * associativity"
+    if '*' in distance_type_uip :
+        print ( 'CREATING DISTANCE PRODUCTS' )
+        distance_products = list( set( distance_type_uip.split('*') ) - set([distance_type]) )
+        if len( distance_products ) > 0 :
+            for aux_distance in distance_products :
+                if 'assoc' in aux_distance.lower() :
+                    distm_aux = 0.5 + 0.5 * associativity	( input_quant_f , input_quant_f )
+                elif 'pears' in aux_distance.lower() :
+                    distm_aux = 0.5 + 0.5 * pearsonrho		( input_quant_f , input_quant_f )
+                elif 'spear' in aux_distance.lower() :
+                    distm_aux = 0.5 + 0.5 * spearmanrho		( input_quant_f , input_quant_f )
+                else :
+                    distm_aux = distance_calculation ( input_quant_f , aux_distance ,
+                         bRemoveCurse = bRemoveCurse_ , nRound = nRound_ )
+            distm_features = distm_features * distm_aux
+    #
+    # HERE YOU CAN POTENTIALLY SUPPLY A VALUE FILTER
     distm_features *= divergence ( distm_features )
     #
     resdf_f , hierarch_f_df , soldf_f = create_mapping ( distm = distm_features ,
@@ -422,6 +445,21 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
         # FOR HIERARCHICAL CLUSTERING THE MATRIX MUST BE SYMMETRIC
         distm_samples = biox.symmetrize_broken_symmetry ( distm_samples , method = heal_symmetry_break_method )
     #
+    if '*' in distance_type_uip :
+        print ( 'CREATING DISTANCE PRODUCTS' )
+        distance_products = list( set( distance_type_uip.split('*') ) - set([distance_type]) )
+        if len( distance_products ) > 0 :
+            for aux_distance in distance_products :
+                if 'assoc' in aux_distance.lower() :
+                    distm_aux = 0.5 + 0.5 * associativity       ( input_quant_s , input_quant_s )
+                elif 'pears' in aux_distance.lower() :
+                    distm_aux = 0.5 + 0.5 * pearsonrho          ( input_quant_s , input_quant_s )
+                elif 'spear' in aux_distance.lower() :
+                    distm_aux = 0.5 + 0.5 * spearmanrho         ( input_quant_s , input_quant_s )
+                else :
+                    distm_aux = distance_calculation ( input_quant_s , aux_distance ,
+                         bRemoveCurse = bRemoveCurse_ , nRound = nRound_ )
+            distm_features = distm_features * distm_aux
     distm_samples *= divergence ( distm_samples )
     #
     resdf_s , hierarch_s_df , soldf_s = create_mapping ( distm = distm_samples ,
