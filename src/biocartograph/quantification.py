@@ -401,7 +401,7 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
     # THAT IS DONE HERE VIA I.E.:  "covexpression * spearman * associativity"
     if '*' in distance_type_uip :
         print ( 'CREATING DISTANCE PRODUCTS' )
-        distance_products = list( set( distance_type_uip.split('*') ) - set([distance_type]) )
+        distance_products = list( set( distance_type_uip.split('*') ) - set([distance_type,'covariation','coexpression']) )
         if len( distance_products ) > 0 :
             for aux_distance in distance_products :
                 if 'assoc' in aux_distance.lower() :
