@@ -410,7 +410,7 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
                     distm_aux = 0.5 + 0.5 * pearsonrho		( input_quant_f , input_quant_f )
                 elif 'spear' in aux_distance.lower() :
                     distm_aux = 0.5 + 0.5 * spearmanrho		( input_quant_f , input_quant_f )
-                else :
+                elif not ('covariation' in aux_distance.lower() or 'coexpression' in aux_distance.lower() ) :
                     distm_aux = distance_calculation ( input_quant_f , aux_distance ,
                          bRemoveCurse = bRemoveCurse_ , nRound = nRound_ )
             distm_features = distm_features * distm_aux
@@ -456,7 +456,7 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
                     distm_aux = 0.5 + 0.5 * pearsonrho          ( input_quant_s , input_quant_s )
                 elif 'spear' in aux_distance.lower() :
                     distm_aux = 0.5 + 0.5 * spearmanrho         ( input_quant_s , input_quant_s )
-                else :
+                elif not ('covariation' in aux_distance.lower() or 'coexpression' in aux_distance.lower() ) :
                     distm_aux = distance_calculation ( input_quant_s , aux_distance ,
                          bRemoveCurse = bRemoveCurse_ , nRound = nRound_ )
             distm_features = distm_features * distm_aux
