@@ -301,7 +301,7 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
     cmd			= hierarchy_cmd
     bRemoveCurse_	= bRemoveCurse
     nRound_		= None
-    distance_type_uip	= distance_type.copy()
+    distance_type_uip	= distance_type
     input_quant_f	= input_values.copy()
     input_quant_s       = input_values.T.copy()
     #
