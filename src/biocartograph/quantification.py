@@ -302,8 +302,6 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
     bRemoveCurse_	= bRemoveCurse
     nRound_		= None
     distance_type_uip	= distance_type
-    input_quant_f	= input_values.copy()
-    input_quant_s       = input_values.T.copy()
     #
     if not n_components is None :
         m = np.min(np.shape(adf.values))
@@ -318,8 +316,10 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
         from impetuous.special import zvals
         input_values = zvals( adf.values )['z']
     #
-    input_values_f = input_values
-    input_values_s = input_values.T
+    input_quant_f	= input_values.copy()
+    input_quant_s       = input_values.T.copy()
+    input_values_f      = input_values
+    input_values_s      = input_values.T
     MF_f , MF_s = None , None
     if 'covariation' in distance_type or 'coexpression' in distance_type or bPreCompute :
         u , s , vt = np.linalg.svd ( input_values , False )
