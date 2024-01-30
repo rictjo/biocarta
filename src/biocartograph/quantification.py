@@ -459,7 +459,7 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
                 elif not ('covariation' in aux_distance.lower() or 'coexpression' in aux_distance.lower() ) :
                     distm_aux = distance_calculation ( input_quant_s , aux_distance ,
                          bRemoveCurse = bRemoveCurse_ , nRound = nRound_ )
-            distm_features = distm_features * distm_aux
+            distm_samples = distm_samples * distm_aux
     distm_samples *= divergence ( distm_samples )
     #
     resdf_s , hierarch_s_df , soldf_s = create_mapping ( distm = distm_samples ,
