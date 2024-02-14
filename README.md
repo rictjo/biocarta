@@ -91,6 +91,10 @@ What groupings correspond to biomarker variance that describes them? Here are so
 
 We can also make more [elaborate visualisation](https://rictjo.github.io/?https://gist.githubusercontent.com/rictjo/0609bfb6a6113703155f3c08058d1855/raw/47b27519da996cde17f32e7d386ea527a89eba8a/index.html) applications with the information that the biocartograph calculates.
 
+## Mammals 
+[interactive rat](https://rictjo.github.io/?https://gist.githubusercontent.com/rictjo/ceec25278234be1079a055eb77588eea/raw/a306bc5fa1f227b0ecabe0f46577e5646c05f8b2/index.html)
+[interactive pig](https://rictjo.github.io/?https://gist.githubusercontent.com/rictjo/b6af5a52d1aee67ea9d84d9edc2af169/raw/388900e9518c3ee869006ee032bfb5ef9a26406b/index.html)
+
 # Enrichment results
 If we have gmt files describing what groups of our analytes might be in then we can calculate enrichment properties for gene groupings (clusters). One resource for obtaining information is the [Reactome](https://reactome.org/download-data) database. If the pathway definitions are hierarchical then you can also supply the parent-child list and calculate treemap enrichments for all your clusters.
 [Example of biocartograph treemap cluster](https://rictjo.github.io/?https://gist.githubusercontent.com/rictjo/146ba66109c6554684dc387348d21a82/raw/a32f1e7c80cc6ebe53c33039e2adfb4512e3ce4b/index.html)
