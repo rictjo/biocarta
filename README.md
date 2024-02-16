@@ -120,6 +120,8 @@ You can also produce a `gmt` and `pcfile` of your own from the clustering soluti
 For group factor enrichments simply use the `bEnriched.from_multivariate_group_factors` method instead. This will produce results that can be visualised like this:
 [biocartograph gfa Reactome enrichment](https://rictjo.github.io/?https://gist.githubusercontent.com/rictjo/42ec85df088a0c40de339a78322594bd/raw/0725bea467b0c153298655e3a0555670a812e80f/index.html) or the [cluster label gfa enrichments](https://rictjo.github.io/?https://gist.githubusercontent.com/rictjo/5d83a85537839232f34edccde1cdc8e6/raw/40c49013a55213405a6b6609f9ab31c883668d5d/index.html)
 
+[cluster treemap svg](https://gist.github.com/rictjo/26192142e3d58c4849cacf96f1a87235) using the biocartograph.special utilities
+
 # Creating a nested file structure
 There is a function within the `biocartograph` package that can be used to package your generated results into a more easily parsed directory. This function can be called via :
 ```
