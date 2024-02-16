@@ -668,7 +668,156 @@ def generate_atlas_files ( header_str:str ,
                         distance_matrix			= D , bVerbose=False )
         print ( "PRODUCED AUC AND HAPPINESS FOR ALL!" )
 
+
+from impetuous.convert import NodeGraph, Node
+
+class DrawGraphText ( object ) :
+    def __init__ ( self ,	color_label:str		= None ,
+				area_label:str		= None ,
+				celltext_label:str	= None ,
+				font:str		= 'Arial' ,
+				header:str		= None ) :
+        from impetuous.quantification import grouper
+        self.grouper = grouper
+        #
+        self.id_        :str	= ""
+        self.label_     :str	= ""
+        if header is None :
+            self.header_        :str	= """graph {\nlayout=patchwork\nnode [style=filled]\n"""
+        else :
+            self.header_        :str	= header
+        self.story_             :str	= self.header_
+        self.base_size_         :int	= 30
+        self.default_color_	:str	= "#AFFFE1"
+        self.color_label_	:str	= ".#-"
+        self.area_label_	:str	= "-#."
+        self.celltext_label_	:str	= "#-."
+        if not color_label	is None :
+            self.color_label_		= color_label
+        if not area_label	is None :
+            self.area_label_		= area_label
+        if not celltext_label	is None :
+            self.celltext_label_	= celltext_label
+        if not font   is None :
+            self.celltext_font_        = font
+        self.dt_check	= lambda data , strtype , alternative : data if strtype in str(type(data)).lower() else alternative
+        self.ddt_check	= lambda data , label , strtype , alternative : self.dt_check(data[label],strtype,alternative) if label in data else alternative
+        self.regroup	= lambda label , NG : '\n'.join( [ ' '.join( g ) for g in self.grouper( label.split(' '),NG) ])
+        self.contract_cell_text = lambda txt,L : txt if False else self.regroup( txt , 2 )
+
+    def create_gv_node_info ( self , node_id:str , nG:NodeGraph , bIsChild:bool=False ) :
+        base_size = self.base_size_
+        graphnode = nG .get_node( node_id )
+        children = graphnode.get_links('descendants')
+        if len( children ) == 0 :
+            celltext = self.ddt_check(graphnode.get_data() , self.celltext_label_ , "str" , graphnode.identification())
+            cellsize = int(np.round( self.ddt_check( graphnode.get_data() , self.area_label_ , "float" , self.base_size_  )))
+            celltext = self.contract_cell_text(celltext,cellsize)
+            # print ( celltext )
+            nochildren = """$LABEL$  [area=$#$ fontname=$FONT$ fillcolor="$COLOR$" ]\n"""\
+                .replace( '$FONT$'	, self.celltext_font_ )\
+                .replace( "$LABEL$"	, '\"' + celltext + '\"' )\
+                .replace(  "$#$"	, str (  cellsize  ) )\
+                .replace( "$COLOR$"	, self.ddt_check( graphnode.get_data() , self.color_label_ , "str" , self.default_color_ ) )
+            self.story_ += nochildren
+        else :
+            subheader = """subgraph \"$LABEL$\" {\nlayout=patchwork\nstyle=filled\n""".replace("$LABEL$",node_id )
+            self.story_ += subheader
+            for child in children :
+                self.create_gv_node_info( child , nG , True )
+            self.story_ += "}\n"
+
+    def print_story ( self ) :
+        print ( self.story_	+ '\n}' )
+
+    def return_story ( self ) -> str :
+        return ( self.story_	+ '\n}' )
+#
+# END OF CLASS
+#
+def create_NodeGraph_object_from_treemap_file( treemap_filename:str = '../bioc_results/DMHMSY_Fri_Feb__2_13_16_01_2024_treemap_c4.tsv',
+		bHelped:bool=False , mappings:list = None , transforms:list = None ) -> NodeGraph :
+    #
+    make_hex_colors = lambda c : '#%02x%02x%02x' % (c[0]%256,c[1]%256,c[2]%256)
+    dft = pd.read_csv( treemap_filename , sep='\t' , index_col = 0 )
+    nG = NodeGraph()
+    #
+    all_names,all_added	= [] , []
+    pcs			= []
+    sig_maxval	, sig_minval	= np.max( -1.0*np.log10(dft.loc[:,'p-value'].values) ) , np.min(  -1.0*np.log10(dft.loc[:,'p-value'].values)  )
+    num_maxval	, num_minval	= np.max( dft.loc[:,'N_intersect']  ) , np.min( dft.loc[:,'N_intersect'] )
+    #
+    for i in range( len(dft) ) :
+        nodeid	= dft.iloc[i].loc['name']
+        label	= ' : '.join( dft.iloc[i].loc[['name','description']].values.tolist() )
+        v_ids	= [ dft.iloc[i].loc['parent'] ]
+        #
+        all_names   .append( v_ids[0] )
+        all_names   .append(  nodeid  )
+        all_added   .append(  nodeid  )
+        #
+        n_node = Node()
+        n_node .set_id( nodeid )
+        n_node .add_label( nodeid )
+        n_node .add_description( label )
+        n_node .get_data()['Description']	= label.replace( ' : ' , '\n ' ).replace('/',' / ')
+        n_node .get_data()[ 'Area' ]		= 40 * dft.iloc[i].loc['N_intersect']/( num_maxval-num_minval ) + 30
+        n_node .get_data()['Significance']	= -1.0* np.log10( dft.iloc[i].loc['p-value'] )
+        #
+        blaze = n_node .get_data()['Significance']/(sig_maxval-sig_minval) * 512
+        r = int( np.ceil( 255 if blaze>=255 else blaze ))
+        gb= int( np.ceil(  0  if blaze <255 else blaze-255 ))
+        n_node .get_data()['Color' ]                = make_hex_colors( [ r , gb , gb] )
+        #
+        n_node .add_links( v_ids  , bClear=True , linktype = 'ascendants' )
+        nG.add( n_node )
+
+        pc = [ v_ids[0] , nodeid ]
+        pcs.append( pc )
+
+    if len( set(all_names)-set(all_added) )>0 :
+        nodeid      = list(  set(all_names)-set(all_added) )[0]
+        label       = nodeid + ' : ROOT'
+        v_ids       = [ "" , "" ]
+        n_node = Node()
+        n_node .set_id( nodeid )
+        n_node .add_label( nodeid )
+        n_node .add_description( label )
+        nG.add( n_node )
+        nG.set_root_id(nodeid)
+
+    for pc in pcs :
+        nG.get_node(pc[0]).add_links([pc[1]],linktype='descendants')
+
+    if bHelped :
+        print ( """
+    n_node.get_data()['Description']
+    n_node.get_data()['Color']
+    n_node.get_data()['N']
+    n_node.get_data()['Significance']""" )
+    return ( nG )
+
+
 if __name__ == '__main__' :
+    #
+    nG_ = create_NodeGraph_object_from_treemap_file( '../bioc_results/DMHMSY_Fri_Feb__2_13_16_01_2024_treemap_c4.tsv' )
+    #
+    if True :
+        print ( "THE JSON DATA" )
+        print ( nG_.write_json() )
+        print ( "THE LEAF NODES" )
+        print ( nG_.retrieve_leaves( nG_.get_root_id() ) )
+    #
+    dgt = DrawGraphText(	color_label = 'Color' , area_label = 'Area',
+			celltext_label = 'Description' , font = 'Arial' )
+    dgt .create_gv_node_info( nG_.get_root_id() , nG_  )
+    graphtext = dgt.return_story()
+    #
+    import pygraphviz as pgv
+    G1 = pgv.AGraph( graphtext )
+    G1 .layout()
+    G1 .draw("file1.svg")
+
     #
     reformat_results_and_print_gmtfile_pcfile( header_str = '../results/DMHMSY_Fri_Mar_17_14_37_07_2023_' )
     reformat_results_and_print_gmtfile_pcfile( header_str = '../results/DMHMSY_Fri_Mar_17_16_00_47_2023_' )
