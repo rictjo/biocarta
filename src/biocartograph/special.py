@@ -797,6 +797,95 @@ def create_NodeGraph_object_from_treemap_file( treemap_filename:str = '../bioc_r
     n_node.get_data()['Significance']""" )
     return ( nG )
 
+#
+#
+def create_color ( num:int ) :
+    # THE COMMON PERCEPTION OF THE VISIBLE SPECTRUM
+    make_hex_color = lambda c : '#%02x%02x%02x' % (c[0]%256,c[1]%256,c[2]%256)
+    c	= [ 0 , 0 , 0 ]
+    cas	= 1 + int ( num / 256 )
+    vol	= num	%	256
+    if   cas == 1 :
+        c[0] = vol
+    elif cas == 2 :
+        c[0] = 255
+        c[1] = vol
+    elif cas == 3 :
+        c[0] = 255 - vol
+        c[1] = 255
+    elif cas == 4 :
+        c[0] = 0
+        c[1] = 255
+        c[2] = vol
+    elif cas == 5 :
+        c[0] = 0
+        c[1] = 255 - vol
+        c[2] = 255
+    elif cas == 6 :
+        c[0] = vol
+        c[1] = 0
+        c[2] = 255
+    elif cas == 7 :
+        c[0] = 255
+        c[1] = vol
+        c[2] = 255
+    else :
+        c = [ 255 , 255 , 255 ]
+    return ( make_hex_color( c ) )
+
+
+def create_hilbertmap ( nG:NodeGraph		,
+        quant_label:str = 'Area'	        , # quant_label = 'Area'
+        search_type:str = 'breadth'      	, # search_type = 'depth'
+	n:int = 32 				) -> dict :
+        m = n
+        from impetuous.special import hc_d2r
+        #
+        tot             =   0
+        extends_to      = n * m
+        fractions       = dict()
+        #
+        for p in nG .retrieve_leaves( nG_.get_root_id() , search_type )['path'] :
+            tot += nG .get_graph()[p].get_data()[quant_label]
+            fractions [ p ] = nG .get_graph()[p].get_data()[quant_label]
+        things  = [ [ k , int(np.round(v*n*n/tot)) ] for k,v in fractions.items() ]
+        correction      = n * m - np.sum([ t[1] for t in things ])
+        c_s             = np.sign( correction )
+        #
+        for j in [ int(i) for i in np.floor(np.random.rand( np.abs(correction) ) * len(things)) ] :
+            things[j][1] += c_s
+        #
+        # NOW THE SAME FOR COLORS
+        s       =   0
+        q       = 1792  # max color
+        colored_things = []
+        for thing in things :
+            pos  = 0.5 * thing[ 1 ] + s
+            s   += thing[1]
+            color        = create_color( int( np.round( pos ) * q / extends_to ) )
+            colored_things.append( [ thing[0] , color , pos , thing[1] ] )
+        #
+        dR      = dict()
+        R , P   = [] , []
+        I       = 0
+        d , s_  = 0 , 0
+        while ( d < extends_to ) :
+            rt = hc_d2r( n , d )
+            R  .append( rt )
+            d  += 1
+            s_ += 1
+            thing = colored_things[ I ]
+            P .append([ d , *rt , thing[0] , thing[1] ] )
+            if thing[0] in dR :
+                dR[thing[0]] .append( rt )
+            else :
+                dR[thing[0]] = [ thing[1] ]
+                dR[thing[0]] .append( rt )
+            if s_ == thing[3] :
+                s_ = 0
+                I += 1
+        dR['P data'] = P
+        return ( dR )
 
 if __name__ == '__main__' :
     #
