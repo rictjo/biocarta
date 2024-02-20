@@ -797,6 +797,11 @@ def create_NodeGraph_object_from_treemap_file( treemap_filename:str = '../bioc_r
     n_node.get_data()['Significance']""" )
     return ( nG )
 
+unique_list         = lambda Y : [ list(li) for li in list(set( [ tuple((z for z in y)) for y in Y ] )) ]
+make_hex_color      = lambda c : '#%02x%02x%02x' % (c[0]%256,c[1]%256,c[2]%256)
+invert_color        = lambda color : make_hex_color( [  255 - int('0x'+color[1:3],0) ,
+                                        255 - int('0x'+color[3:5],0) ,
+                                        255 - int('0x'+color[5:] ,0) ] )
 #
 #
 def create_color ( num:int ) :
