@@ -121,7 +121,7 @@ For group factor enrichments simply use the `bEnriched.from_multivariate_group_f
 [biocartograph gfa Reactome enrichment](https://rictjo.github.io/?https://gist.githubusercontent.com/rictjo/42ec85df088a0c40de339a78322594bd/raw/0725bea467b0c153298655e3a0555670a812e80f/index.html) or the [cluster label gfa enrichments](https://rictjo.github.io/?https://gist.githubusercontent.com/rictjo/5d83a85537839232f34edccde1cdc8e6/raw/40c49013a55213405a6b6609f9ab31c883668d5d/index.html)
 
 ## Example : Visualise hierarchical dependance and significances
-Here we will study the hierarchical dependance of enrichment group results using a jigsaw like approach. The piecewise fitting into the final jigsaw convey how similar the enrichment groups are for the data. The relative sizes of the pieces relate to the significance level of each group. It is assumed that an enrichment calculation has already been performed using the biocartograph functions. This approach makes use of a NodeGraph class as well as hilbert curve construction, both from the [impetuous-gfa'](https://github.com/richardtjornhammar/impetuous) package. Now we show some example code for how to create the below graph
+Here we will study the hierarchical dependance of enrichment group results using a jigsaw like approach. The piecewise fitting into the final jigsaw convey how similar the enrichment groups are for the data. The relative sizes of the pieces relate to the significance level of each group. It is assumed that an enrichment calculation has already been performed using the biocartograph functions. This approach makes use of a NodeGraph class as well as hilbert curve construction, both from the [impetuous-gfa](https://github.com/richardtjornhammar/impetuous) package. Now we show some example code for how to create the below graph
 ```
     from biocartograph.special import create_NodeGraph_object_from_treemap_file
     nG_ = create_NodeGraph_object_from_treemap_file( '../bioc_results/DMHMSY_Fri_Feb__2_13_16_01_2024_treemap_c4.tsv' )
@@ -140,7 +140,7 @@ Here we will study the hierarchical dependance of enrichment group results using
     P  = dR[ 'P data' ]
     NN = dR[ 'NearestN' ]
     #
-    from biocartograph.visualisation import show_hilbertmap_plygons
+    from biocartograph.visualisation import show_hilbertmap_polygons
     show_hilbertmap_polygons( dR , bAddLabels=True )
     #
     from biocartograph.visualisation import return_hilbertmap_polygons
@@ -156,7 +156,7 @@ The colormap used for the treemap is the spectral stepping map as defined in the
 from biocartograph.special import create_color
 from biocartograph.visualisation import invert_color
 ```
-Take note that some special functions are also imported into other biocartograph modules and can be called from either. A more traditional graphvis dependent treemap can also be created using biocartograph functions:
+Take note that some special functions are also imported into other biocartograph modules and can be called from either. A more traditional [graphviz](https://graphviz.org/docs/layouts/patchwork/) dependent treemap can also be created using biocartograph functions:
 ```
     from biocartograph.visualisation import DrawGraphText
     dgt = DrawGraphText(        color_label = 'Color' , area_label = 'Area',
