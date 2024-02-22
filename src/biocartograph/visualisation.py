@@ -64,7 +64,7 @@ def show_hilbertmap_simple ( dR:dict , bAddShadow:bool = False , bShowCells:bool
                     fontfamily='sans-serif' , weight='bold', fontstyle='normal' , color = tcolor ) )
     plt.show()
 
-def show_hilbertmap_plygons( dR:dict , color_label:str=None , text_pos_label:str = None ,
+def show_hilbertmap_polygons( dR:dict , color_label:str=None , text_pos_label:str = None ,
 		bHideBorders:bool = False , bExpanded:bool=True , bInputDataIsPolygoned:bool = False ,
 		bHideCenters:bool = True  , bAddLabels:bool=False ,
 		bPlaceLabelsFarLeft:bool = True ) :
