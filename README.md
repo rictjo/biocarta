@@ -120,7 +120,55 @@ You can also produce a `gmt` and `pcfile` of your own from the clustering soluti
 For group factor enrichments simply use the `bEnriched.from_multivariate_group_factors` method instead. This will produce results that can be visualised like this:
 [biocartograph gfa Reactome enrichment](https://rictjo.github.io/?https://gist.githubusercontent.com/rictjo/42ec85df088a0c40de339a78322594bd/raw/0725bea467b0c153298655e3a0555670a812e80f/index.html) or the [cluster label gfa enrichments](https://rictjo.github.io/?https://gist.githubusercontent.com/rictjo/5d83a85537839232f34edccde1cdc8e6/raw/40c49013a55213405a6b6609f9ab31c883668d5d/index.html)
 
-[cluster treemap svg](https://gist.github.com/rictjo/26192142e3d58c4849cacf96f1a87235) using the biocartograph.special utilities
+## Example : Visualise hierarchical dependance and significances
+Here we will study the hierarchical dependance of enrichment group results using a jigsaw like approach. The piecewise fitting into the final jigsaw convey how similar the enrichment groups are for the data. The relative sizes of the pieces relate to the significance level of each group. It is assumed that an enrichment calculation has already been performed using the biocartograph functions. This approach makes use of a NodeGraph class as well as hilbert curve construction, both from the [impetuous-gfa'](https://github.com/richardtjornhammar/impetuous) package. Now we show some example code for how to create the below graph
+```
+    from biocartograph.special import create_NodeGraph_object_from_treemap_file
+    nG_ = create_NodeGraph_object_from_treemap_file( '../bioc_results/DMHMSY_Fri_Feb__2_13_16_01_2024_treemap_c4.tsv' )
+    #
+    if False :
+        print ( "THE JSON DATA" )
+        print ( nG_.write_json() )
+        print ( "THE LEAF NODES" )
+        print ( nG_.retrieve_leaves( nG_.get_root_id() ) )
+
+    from biocartograph.visualisation import create_hilbertmap
+    dR = create_hilbertmap ( nG_			 ,
+                quant_label = 'Significance' , #'Significance', # quant_label = 'Area'
+                search_type = 'breadth'      , # search_type = 'depth'
+                n = 32				)
+    P  = dR[ 'P data' ]
+    NN = dR[ 'NearestN' ]
+    #
+    from biocartograph.visualisation import show_hilbertmap_plygons
+    show_hilbertmap_plygons( dR , bAddLabels=True )
+    #
+    from biocartograph.visualisation import return_hilbertmap_polygons
+    dP = return_hilbertmap_polygons( dR )
+    show_hilbertmap_plygons( dP , bInputDataIsPolygoned=True , bAddLabels=True )
+    show_hilbertmap_simple ( dR )
+    #
+```
+with the result:
+![teaser](https://gist.githubusercontent.com/rictjo/d748720230706cf52b9ef1a753c0835c/raw/dab729a63b0a4833afacce824ef914252b0f7ce2/hilbertmap_polygons.svg)
+
+A more traditional graphvis dependent treemap can be created using biocartograph functionallity
+```
+    from biocartograph.visualisation import DrawGraphText
+    dgt = DrawGraphText(        color_label = 'Color' , area_label = 'Area',
+                        celltext_label = 'Description' , font = 'Arial' )
+    #
+    dgt .create_gv_node_info( nG_.get_root_id() , nG_  )
+    graphtext = dgt.return_story()
+    #
+    import pygraphviz as pgv
+    G1 = pgv.AGraph( graphtext )
+    G1 .layout()
+    G1 .draw("file1.svg")
+```
+with the result:
+![teaser](https://gist.githubusercontent.com/rictjo/26192142e3d58c4849cacf96f1a87235/raw/2a44221d936fc322a423aacd53a790dcea2f7787/treemap_test.svg) 
+
 
 # Creating a nested file structure
 There is a function within the `biocartograph` package that can be used to package your generated results into a more easily parsed directory. This function can be called via :
