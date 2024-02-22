@@ -19,8 +19,19 @@ from impetuous.clustering	import approximate_auc
 from impetuous.special		import unpack
 from impetuous.convert		import read_rds , write_rds
 from impetuous.quantification	import spearmanrho , pearsonrho , tjornhammarrho, correlation_core
+from impetuous.special          import hc_d2r , hc_r2d , hc_assign_lin_nn , hc_assign_lin_nnn
 
 clean_label = lambda x : x.replace(' ','_').replace('/','Or').replace('\\','').replace('-','')
+unique_list         = lambda Y : [ list(li) for li in list(set( [ tuple((z for z in y)) for y in Y ] )) ]
+make_hex_color      = lambda c : '#%02x%02x%02x' % (c[0]%256,c[1]%256,c[2]%256)
+invert_color        = lambda color : make_hex_color( [  255 - int('0x'+color[1:3],0) ,
+                                        255 - int('0x'+color[3:5],0) ,
+                                        255 - int('0x'+color[5:] ,0) ] )
+unordered_remove    = lambda Y,Z :  [ list(li) for li in list( set( [ tuple((z for z in y)) for y in Y ])\
+                                                             - set( [ tuple((x for x in z)) for z in Z ]) ) ]
+list_is_in_list     = lambda Y,Z :  len( set([ tuple((z for z in y)) for y in Y ]) - set([ tuple((x for x in z)) for z in Z ]) ) == 0
+
+
 
 def calculate_volcano_df( vals_df:pd.DataFrame , levels:list[str] , what:str='Regulation' ,
                                  bLog2:bool=False , bRanked:bool=False ) -> pd.DataFrame :
@@ -840,11 +851,11 @@ def create_color ( num:int ) :
 
 
 def create_hilbertmap ( nG:NodeGraph		,
-        quant_label:str = 'Area'	        , # quant_label = 'Area'
+        quant_label:str = 'Area'	        , # quant_label = 'Significance'
         search_type:str = 'breadth'      	, # search_type = 'depth'
 	n:int = 32 				) -> dict :
         m = n
-        from impetuous.special import hc_d2r
+        from impetuous.special import hc_d2r , hc_assign_lin_nn
         #
         tot             =   0
         extends_to      = n * m
@@ -871,11 +882,12 @@ def create_hilbertmap ( nG:NodeGraph		,
             colored_things.append( [ thing[0] , color , pos , thing[1] ] )
         #
         dR      = dict()
-        R , P   = [] , []
+        R , P , NN       = [] , [] , []
         I       = 0
         d , s_  = 0 , 0
         while ( d < extends_to ) :
             rt = hc_d2r( n , d )
+            NN .append(  hc_assign_lin_nn( n , d )[1:] )
             R  .append( rt )
             d  += 1
             s_ += 1
@@ -889,8 +901,68 @@ def create_hilbertmap ( nG:NodeGraph		,
             if s_ == thing[3] :
                 s_ = 0
                 I += 1
-        dR['P data'] = P
+        dR['P data']	= P
+        dR['NearestN']	= NN
         return ( dR )
+#
+def solve_border_salesman( grid_points:list , bBrute:bool=False ) -> np.array :
+    #
+    # SOLVES A TRAVELING SALESMAN PROBLEM WHEN THE POOR SAIGASELLER IS
+    # FORCED TO MOVE ALONG BORDER POINTS
+    # CAN BE USED TO DRAW A NON-CONVEX POLYGON
+    #
+    # CONTAINS UNRESOLVED "FEATURE" WHEN DEALING WITH SINGLE LINKED BORDER POINTS
+    #
+    if True :
+        if True :
+            n = np.max(grid_points) + 1
+            val_grid_points     = grid_points.copy()
+            if bBrute :
+                val_grid_points = [ val_grid_points[0] ]
+            solution = None
+            FULL_PATH_LENGTH	= n*n
+            #
+            for p_entry in val_grid_points :
+                sorted_coords       = [ p_entry ]
+                visited_coords      = sorted_coords
+                unsorted_coords     = unordered_remove( grid_points , [ p_entry ] )
+                #
+                bClosed = False
+                x0 = p_entry
+                xp = x0
+                #
+                while len(unsorted_coords) > 0 :
+                    L  = (n + 1)*n
+                    Y  = np.array( unsorted_coords     )
+                    y0 = np.array(   sorted_coords[-1] )
+                    ya = None
+                    yL = []
+                    for y_ in Y :
+                        y = y_[:2]
+                        J = np.sqrt( np.sum((y0-y)**2) )
+                        if J <= L :
+                            L  = J
+                            A  = np.arctan2( *((y_- y0)[::-1]) )
+                            ya = y_
+                            yL .append( [J,A,*y_[:2]] )
+                    if len(yL) > 0 :
+                        ya = sorted([ y[1:] for y in yL if y[0] == L ])[::-1][0][1:]
+                    if ya is None :
+                        print ( "WARNING : EXPECTED FEATURE ENCOUNTERED !!!" )
+                        print ( 'GP>' , grid_points ,'\nY>',Y,'\nL>',L,'\nyL>',yL )
+                    sorted_coords   .append( ya[:2] )
+                    unsorted_coords = unordered_remove( Y , [ya] )
+                # SHORTEST PATH DETERMINED
+                #
+                sorted_coords.append(p_entry) # THE LAST POINT IS THE STARTING POINT
+                sorted_coords = np.array( sorted_coords )
+                PL = 0
+                for i in range(1,len(sorted_coords)) :
+                    PL += np.sqrt( np.sum( (sorted_coords[i-1]-sorted_coords[i])**2 ) )
+                if PL < FULL_PATH_LENGTH : # MAKE IT INDEPENDENT OF STARTING POINT
+                    solution = sorted_coords
+                    FULL_PATH_LENGTH = PL
+            return ( solution )
 
 if __name__ == '__main__' :
     #
