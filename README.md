@@ -151,8 +151,12 @@ Here we will study the hierarchical dependance of enrichment group results using
 ```
 with the result:
 ![teaser](https://gist.githubusercontent.com/rictjo/d748720230706cf52b9ef1a753c0835c/raw/dab729a63b0a4833afacce824ef914252b0f7ce2/hilbertmap_polygons.svg)
-
-A more traditional graphvis dependent treemap can be created using biocartograph functionallity
+The colormap used for the treemap is the spectral stepping map as defined in the biocartograph.special module. The text color inversion is also defined in the biocartograph.visualisation module. Both can be imported and used via
+```
+from biocartograph.special import create_color
+from biocartograph.visualisation import invert_color
+```
+Take note that some special functions are also imported into other biocartograph modules and can be called from either. A more traditional graphvis dependent treemap can also be created using biocartograph functions:
 ```
     from biocartograph.visualisation import DrawGraphText
     dgt = DrawGraphText(        color_label = 'Color' , area_label = 'Area',
