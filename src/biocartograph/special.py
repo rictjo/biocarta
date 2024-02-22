@@ -861,9 +861,9 @@ def create_hilbertmap ( nG:NodeGraph		,
         extends_to      = n * m
         fractions       = dict()
         #
-        for p in nG .retrieve_leaves( nG_.get_root_id() , search_type )['path'] :
+        for p in nG.retrieve_leaves( nG.get_root_id() , search_type )['path'] :
             tot += nG .get_graph()[p].get_data()[quant_label]
-            fractions [ p ] = nG .get_graph()[p].get_data()[quant_label]
+            fractions [ p ] = nG.get_graph()[p].get_data()[quant_label]
         things  = [ [ k , int(np.round(v*n*n/tot)) ] for k,v in fractions.items() ]
         correction      = n * m - np.sum([ t[1] for t in things ])
         c_s             = np.sign( correction )
