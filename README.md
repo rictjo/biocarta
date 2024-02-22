@@ -141,11 +141,11 @@ Here we will study the hierarchical dependance of enrichment group results using
     NN = dR[ 'NearestN' ]
     #
     from biocartograph.visualisation import show_hilbertmap_plygons
-    show_hilbertmap_plygons( dR , bAddLabels=True )
+    show_hilbertmap_polygons( dR , bAddLabels=True )
     #
     from biocartograph.visualisation import return_hilbertmap_polygons
     dP = return_hilbertmap_polygons( dR )
-    show_hilbertmap_plygons( dP , bInputDataIsPolygoned=True , bAddLabels=True )
+    show_hilbertmap_polygons( dP , bInputDataIsPolygoned=True , bAddLabels=True )
     show_hilbertmap_simple ( dR )
     #
 ```
