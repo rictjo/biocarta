@@ -964,6 +964,72 @@ def solve_border_salesman( grid_points:list , bBrute:bool=False ) -> np.array :
                     FULL_PATH_LENGTH = PL
             return ( solution )
 
+
+def solve_traveling_salesman( points:np.array , bBrute:bool=False ) -> np.array :
+    #
+    # SOLVES A TRAVELING SALESMAN PROBLEM WHEN THE POOR SAIGASELLER IS
+    # FORCED TO MOVE ALONG BORDER POINTS
+    # CAN BE USED TO DRAW A NON-CONVEX POLYGON
+    #
+    # THIS IS THE OFFGRID VERSION
+    #
+    # CONTAINS UNRESOLVED "FEATURE" WHEN DEALING WITH SINGLE LINKED BORDER POINTS
+    #
+    from scipy.spatial.distance import pdist,squareform
+    LM = np.sum( np.max(squareform(pdist( points ,'euclidean')),0) )*1.01
+
+    if True :
+        if True :
+            n = np.max(points) + 1
+            val_points     = points.copy()
+            if bBrute :
+                val_points = [ val_points[0] ]
+            solution = None
+            FULL_PATH_LENGTH    = LM
+            #
+            for p_entry in val_points :
+                sorted_coords       = [ p_entry ]
+                visited_coords      = sorted_coords
+                unsorted_coords     = unordered_remove( points , [ p_entry ] )
+                #
+                bClosed = False
+                x0 = p_entry
+                xp = x0
+                #
+                while len(unsorted_coords) > 0 :
+                    L  = LM
+                    Y  = np.array( unsorted_coords     )
+                    y0 = np.array(   sorted_coords[-1] )
+                    ya = None
+                    yL = []
+                    for y_ in Y :
+                        y = y_[:2]
+                        J = np.sqrt( np.sum((y0-y)**2) )
+                        if J <= L :
+                            L  = J
+                            A  = np.arctan2( *((y_- y0)[::-1]) )
+                            ya = y_
+                            yL .append( [J,A,*y_[:2]] )
+                    if len(yL) > 0 :
+                        ya = sorted([ y[1:] for y in yL if y[0] == L ])[::-1][0][1:]
+                    if ya is None :
+                        print ( "WARNING : EXPECTED FEATURE ENCOUNTERED !!!" )
+                        print ( 'GP>' , points ,'\nY>',Y,'\nL>',L,'\nyL>',yL )
+                    sorted_coords   .append( ya[:2] )
+                    unsorted_coords = unordered_remove( Y , [ya] )
+                # SHORTEST PATH DETERMINED
+                #
+                sorted_coords.append(p_entry) # THE LAST POINT IS THE STARTING POINT
+                sorted_coords = np.array( sorted_coords )
+                PL = 0
+                for i in range(1,len(sorted_coords)) :
+                    PL += np.sqrt( np.sum( (sorted_coords[i-1]-sorted_coords[i])**2 ) )
+                if PL < FULL_PATH_LENGTH : # MAKE IT INDEPENDENT OF STARTING POINT
+                    solution = sorted_coords
+                    FULL_PATH_LENGTH = PL
+            return ( solution )
+
+
 if __name__ == '__main__' :
     #
     nG_ = create_NodeGraph_object_from_treemap_file( '../bioc_results/DMHMSY_Fri_Feb__2_13_16_01_2024_treemap_c4.tsv' )
