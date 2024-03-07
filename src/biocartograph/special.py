@@ -975,9 +975,9 @@ def solve_traveling_salesman( points:np.array , bBrute:bool=False ) -> np.array 
     #
     # CONTAINS UNRESOLVED "FEATURE" WHEN DEALING WITH SINGLE LINKED BORDER POINTS
     #
-    from scipy.spatial.distance import pdist,squareform
-    LM = np.sum( np.max(squareform(pdist( points ,'euclidean')),0) )*1.01
-
+    #from scipy.spatial.distance import pdist,squareform
+    #LM = np.sum( np.max(squareform(pdist( points ,'euclidean')),0) )*1.01
+    LM = np.inf
     if True :
         if True :
             n = np.max(points) + 1
