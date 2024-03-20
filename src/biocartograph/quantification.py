@@ -128,7 +128,7 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
         n_projections:int = 2 , directory:str = './' , bQN:int = None ,
         nNeighborFilter:list[int] = None , heal_symmetry_break_method:str = 'average' ,
         epls_ownership:str = 'angle' , bNonEuclideanBackprojection:bool = False ,
-        Sfunc = lambda x:np.mean(x,0) , bAddPies:bool=False , bUseTDA:bool = False ,
+        Sfunc = lambda x:np.mean(x,0) , bAddPies:bool=False , bUseTDA:bool = False , bUseFastICA:bool=False ,
         consensus_function = lambda x:np.sum(x) , consensus_labels:list[str] = None , bDisbandAggregation:bool = True ,
         bUseGeometricallyCenteredZvalues:bool = False , EPLSformula:str=None , bAddAnnotationDistanceMatrix:bool  = False ,
         contraction_quantile:float = None   , contraction_depth:float = None , bAddCompositionDistanceMatrix:bool = False ,
@@ -160,7 +160,7 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
         'bRemoveCurse:bool':bRemoveCurse , 'n_projections:int':n_projections , 'directory:str':directory , 'bQN:int':bQN ,
         'nNeighborFilter:list[int]':nNeighborFilter , 'heal_symmetry_break_method:str':heal_symmetry_break_method ,
         'epls_ownership:str':epls_ownership , 'bNonEuclideanBackprojection:bool':bNonEuclideanBackprojection ,
-        'Sfunc':Sfunc , 'bAddPies:bool':bAddPies , 'bUseTDA:bool':bUseTDA , 'bAuxConsensusPCA:bool':bAuxConsensusPCA ,
+        'Sfunc':Sfunc , 'bAddPies:bool':bAddPies , 'bUseTDA:bool':bUseTDA , 'bUseFastICA:bool':bUseFastICA, 'bAuxConsensusPCA:bool':bAuxConsensusPCA ,
         'consensus_function':consensus_function , 'consensus_labels:list[str]' : consensus_labels , 'bDisbandAggregation:bool' : bDisbandAggregation ,
         'bUseGeometricallyCenteredZvalues:bool' : bUseGeometricallyCenteredZvalues , 'EPLSformula:str':EPLSformula ,
         'bAddAnnotationDistanceMatrix:bool' : bAddAnnotationDistanceMatrix ,  'bAddCompositionDistanceMatrix:bool' : bAddCompositionDistanceMatrix ,
@@ -327,6 +327,9 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
         if not n_components is None :
             s[n_components:] *= 0
         MF_f = u*s	# EQUIV TO : np.dot(u,np.diag(s))
+        if bUseFastICA :
+            from sklearn.decomposition import FastICA
+            MF_f = FastICA(n_components-1).fit_transform(input_values)
         MF_s = vt.T*s
         if 'absolute' in distance_type.split('secondary[')[0] :
             MF_f = np.abs( MF_f )
