@@ -329,7 +329,7 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
         MF_f = u*s	# EQUIV TO : np.dot(u,np.diag(s))
         if bUseFastICA :
             from sklearn.decomposition import FastICA
-            MF_f = FastICA(n_components-1).fit_transform(input_values)
+            MF_f = FastICA(int(np.min(np.shape(input_values_f)))-1).fit_transform(input_values)
         MF_s = vt.T*s
         if 'absolute' in distance_type.split('secondary[')[0] :
             MF_f = np.abs( MF_f )
