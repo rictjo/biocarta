@@ -95,6 +95,33 @@ We can also make more [elaborate visualisation](https://rictjo.github.io/?https:
 [interactive rat](https://rictjo.github.io/?https://gist.githubusercontent.com/rictjo/ceec25278234be1079a055eb77588eea/raw/a306bc5fa1f227b0ecabe0f46577e5646c05f8b2/index.html)
 [interactive pig](https://rictjo.github.io/?https://gist.githubusercontent.com/rictjo/b6af5a52d1aee67ea9d84d9edc2af169/raw/388900e9518c3ee869006ee032bfb5ef9a26406b/index.html)
 
+## Independent component analysis
+Depending on the data distribution it can be a good idea to optimize the fourth statistical moment instead of the second when projecting feature annotations. This can easily be done using the biocartograph package setting the 'bUseICA=True' when performing the mapping:
+```
+    results = full_mapping ( adf , jdf                                  ,
+            bVerbose                    = True                          ,
+            alignment_label             = alignment_label               ,
+            umap_n_neighbors            = 20                            ,
+            umap_local_connectivity     = 20.                           ,
+            bUseUmap                    = False                         ,
+            bUseFastICA                 = True                          ,
+            consensus_labels            = consensus_labels              ,
+            distance_type               = 'coexpression'                ,
+            hierarchy_cmd               = 'ward' ,
+            directory                   = '../results' ,
+            n_clusters                  = sorted([ 10 , 20 , 30 , 40 , 60 , 70 , 90 , 80 , 100 ,
+                                                120 , 140 , 160 , 180 , 200 ,
+                                                250 , 300 , 350 , 400 , 450 , 500 ,
+                                                600 , 700 , 800 , 900 , 1000 ])  )
+```
+The [FastICA](https://en.wikipedia.org/wiki/FastICA) is then used instead of covariance coordinates, with the results :
+[Cell-line Disease](https://rictjo.github.io/?https://gist.githubusercontent.com/rictjo/9234de13dbcaa5603dcd9a88e71e2e1f/raw/3003230767690624d839fca0ce509726d5ded02d/celline_index.html)
+[Tissue](https://rictjo.github.io/?https://gist.githubusercontent.com/rictjo/9234de13dbcaa5603dcd9a88e71e2e1f/raw/3003230767690624d839fca0ce509726d5ded02d/tissue_index.html)
+[Singlecell](https://rictjo.github.io/?https://gist.githubusercontent.com/rictjo/9234de13dbcaa5603dcd9a88e71e2e1f/raw/3003230767690624d839fca0ce509726d5ded02d/singlecell_index.html)
+[Brain tissues](https://rictjo.github.io/?https://gist.githubusercontent.com/rictjo/9234de13dbcaa5603dcd9a88e71e2e1f/raw/3003230767690624d839fca0ce509726d5ded02d/brain_index.html)
+[Blood immune cells](https://rictjo.github.io/?https://gist.githubusercontent.com/rictjo/9234de13dbcaa5603dcd9a88e71e2e1f/raw/3003230767690624d839fca0ce509726d5ded02d/blood_index.html)
+
+
 # Enrichment results
 If we have gmt files describing what groups of our analytes might be in then we can calculate enrichment properties for gene groupings (clusters). One resource for obtaining information is the [Reactome](https://reactome.org/download-data) database. If the pathway definitions are hierarchical then you can also supply the parent-child list and calculate treemap enrichments for all your clusters.
 [Example of biocartograph treemap cluster](https://rictjo.github.io/?https://gist.githubusercontent.com/rictjo/146ba66109c6554684dc387348d21a82/raw/a32f1e7c80cc6ebe53c33039e2adfb4512e3ce4b/index.html)
@@ -172,7 +199,6 @@ Take note that some special functions are also imported into other biocartograph
 ```
 with the result:
 ![teaser](https://gist.githubusercontent.com/rictjo/26192142e3d58c4849cacf96f1a87235/raw/2a44221d936fc322a423aacd53a790dcea2f7787/treemap_test.svg) 
-
 
 # Creating a nested file structure
 There is a function within the `biocartograph` package that can be used to package your generated results into a more easily parsed directory. This function can be called via :
