@@ -327,7 +327,7 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
         if not n_components is None :
             s[n_components:] *= 0
         MF_f = u*s	# EQUIV TO : np.dot(u,np.diag(s))
-        if bUseFastICA :
+        if bUseFastICA or 'kurtosis' in distance_type :
             from sklearn.decomposition import FastICA
             MF_f = FastICA(int(np.min(np.shape(input_values_f)))-1).fit_transform(input_values)
         MF_s = vt.T*s
