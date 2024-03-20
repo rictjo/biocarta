@@ -321,7 +321,7 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
     input_values_f      = input_values
     input_values_s      = input_values.T
     MF_f , MF_s = None , None
-    if 'covariation' in distance_type or 'coexpression' in distance_type or bPreCompute :
+    if 'covariation' in distance_type or 'coexpression' in distance_type or bPreCompute or 'kurtosis' in distance_type :
         u , s , vt = np.linalg.svd ( input_values , False )
         # SINCE INPUT IS MEAN CENTERED THE COMPONENT COORDINATES CORRESPOND TO THE COVARIATION MATRIX
         if not n_components is None :
@@ -353,7 +353,7 @@ def full_mapping ( adf:pd.DataFrame , jdf:pd.DataFrame ,
                         aux_vals = aux_vals[0]*aux_vals[1]
                         MF_f = np.concatenate([MF_f.T,aux_vals.T]).T
     #
-    if 'covariation' in distance_type or 'coexpression' in distance_type :
+    if 'covariation' in distance_type or 'coexpression' in distance_type or 'kurtosis' in distance_type :
         input_values_f = MF_f
         input_values_s = MF_s
         if 'secondary[' in distance_type :	# THIS IS ACTUALLY A RATHER ODD THING TO DO
