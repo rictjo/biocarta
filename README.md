@@ -96,7 +96,7 @@ We can also make more [elaborate visualisation](https://rictjo.github.io/?https:
 [interactive pig](https://rictjo.github.io/?https://gist.githubusercontent.com/rictjo/b6af5a52d1aee67ea9d84d9edc2af169/raw/388900e9518c3ee869006ee032bfb5ef9a26406b/index.html)
 
 ## Independent component analysis
-Depending on the data distribution it can be a good idea to optimize the fourth statistical moment instead of the second when projecting feature annotations. This can easily be done using the biocartograph package setting the 'bUseICA=True' when performing the mapping:
+Depending on the data distribution it can be a good idea to optimize the fourth statistical moment instead of the second when projecting feature annotations. This can easily be done using the biocartograph package setting the 'bUseFastICA=True' or setting 'distance_type=kurtosis' when performing the mapping:
 ```
     results = full_mapping ( adf , jdf                                  ,
             bVerbose                    = True                          ,
@@ -106,7 +106,7 @@ Depending on the data distribution it can be a good idea to optimize the fourth 
             bUseUmap                    = False                         ,
             bUseFastICA                 = True                          ,
             consensus_labels            = consensus_labels              ,
-            distance_type               = 'coexpression'                ,
+            distance_type               = 'kurtosis'                    ,
             hierarchy_cmd               = 'ward' ,
             directory                   = '../results' ,
             n_clusters                  = sorted([ 10 , 20 , 30 , 40 , 60 , 70 , 90 , 80 , 100 ,
@@ -114,7 +114,7 @@ Depending on the data distribution it can be a good idea to optimize the fourth 
                                                 250 , 300 , 350 , 400 , 450 , 500 ,
                                                 600 , 700 , 800 , 900 , 1000 ])  )
 ```
-The [FastICA](https://en.wikipedia.org/wiki/FastICA) is then used instead of covariance coordinates, with the results :
+The [FastICA](https://en.wikipedia.org/wiki/FastICA) is then used instead of covariance coordinates. In the above snippet setting either of the two options will be enough to do the ICA decomposition, with the results :
 [Cell-line Disease](https://rictjo.github.io/?https://gist.githubusercontent.com/rictjo/9234de13dbcaa5603dcd9a88e71e2e1f/raw/3003230767690624d839fca0ce509726d5ded02d/celline_index.html)
 [Tissue](https://rictjo.github.io/?https://gist.githubusercontent.com/rictjo/9234de13dbcaa5603dcd9a88e71e2e1f/raw/3003230767690624d839fca0ce509726d5ded02d/tissue_index.html)
 [Singlecell](https://rictjo.github.io/?https://gist.githubusercontent.com/rictjo/9234de13dbcaa5603dcd9a88e71e2e1f/raw/3003230767690624d839fca0ce509726d5ded02d/singlecell_index.html)
