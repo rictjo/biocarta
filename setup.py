@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name         = "biocartograph",
-    version      = "0.10.16",
+    version      = "0.10.17",
     author       = "Richard Tjörnhammar",
     author_email = "richard.tjornhammar@gmail.com",
     description  = "Package was renamed from Biocarta v0.2.27 to Biocartograph because of an unintentional name clash",
@@ -17,6 +17,7 @@ setuptools.setup(
 			'composition':'src/composition' , 'special':'src/special' , 'enrichment':'src/enrichment','visualisation':'src/visualisation' },
     classifiers = [
         "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
         "License :: OSI Approved :: Apache Software License",
         "Operating System :: OS Independent",
     ],
